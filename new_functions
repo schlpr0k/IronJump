@@ -1,0 +1,58 @@
+#!/bin/bash
+
+f_new_usr(){
+# takes in argument from calling function to determin if this is an root, secondary, 
+# or endpoint
+    case "$1" in
+    bastion) 
+        echo "I'm a root bastion!"
+        ;;
+    server)
+        echo "I'm a downstream server!"
+        ;;
+    endpoint)
+        echo "I'm an endpoint!"
+        ;;
+    esac
+}
+
+ssh_monitor() {
+    echo "Starting SSH Monitoring Agent"
+    #sleep 2
+    clear
+
+    monitor_ssh() {
+        while true; do
+            clear
+            echo "SSH Connection Monitoring Agent"
+            echo "==============================="
+            netstat -tnpa |grep sshd |awk 'BEGIN {print "USER\t\tREMOTE_IP\t\tPORT\t\tPID"} {split($5, addr, ":"); split($7, proc,"/"); print proc[2] "\t" addr[2] "\t" proc[1]}' |column -t
+            echo "==============================="
+            sleep 5
+        done
+    }
+    monitor_ssh2() {
+        while true; do
+            clear
+            echo "SSH Connection Monitor - $(date)"
+            echo "--------------------------------------------"
+
+            # Display current SSH connections with details (IPs, users, and ports)
+            printf "%-15s %-20s %-10s %-10s\n" "USER" "REMOTE_IP" "PORT" "PID"
+            lsof -iTCP -sTCP:ESTABLISHED -n | grep sshd | while read -r line; do
+                pid=$(echo "$line" | awk '{print $2}')
+                user=$(ps -o user= -p "$pid")
+                remote_ip=$(echo "$line" | awk '{print $9}' | cut -d '>' -f 2 | cut -d ':' -f 1)
+                port=$(echo "$line" | awk '{print $9}' | cut -d '>' -f 2 | cut -d ':' -f 2)
+                printf "%-15s %-20s %-10s %-10s\n" "$user" "$remote_ip" "$port" "$pid" |grep -v root
+            done
+
+            # Add a separator for readability
+            echo "--------------------------------------------"
+
+            # Sleep for 1 seconds before refreshing
+            sleep 3
+        done
+}
+    monitor_ssh2
+}
