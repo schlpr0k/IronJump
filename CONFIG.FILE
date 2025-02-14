@@ -1,21 +1,15 @@
 #!/bin/bash
 
-# Global Variables
+# Global Variables - DO NOT CHANGE THESE! IRONJUMP WILL BREAK!
 LOG_FILE="/var/log/ironjump.log"
 IRONJUMP_SSH_GROUP="ironjump_users"
 IRONJUMP_SRV_GROUP="ironjump_servers"
-IRONJUMP_END_GROUP="ironjump_enpoints"
+IRONJUMP_END_GROUP="ironjump_endpoints"
 IRONJUMP_CHROOT_ENV="/home/ironjump"
-
-#Password Length
-## NOTES: The format is XXX-XXX-XXX where X is equal to a random leter or digit. The Password length is the number of X's between the dashes.
-## PASSWORD_LENGTH=4 sets the password to XXXX-XXXX-XXXX (Overall length of 14-characters [12+dashes]). IronJump automatically rotates passwords
-## every 8 hours by default to prevent password authentication of by users to and through bastions and endpoints and downstream bastions
-## connecting to the upstream bastions. This does not affect the password of user accounts on endpoints. 
 PASSWORD_LENGTH="64"
 PASSWORD_ROTATION="8"
 
-# SSH Configuration
+# SSH Configuration - IT'S OKAY TO EDIT THESE TO YOUR NEEDS!
 SSH_CONFIG_FILE="/etc/ssh/sshd_config"
 SSH_CONFIG_BACKUP="/etc/ssh/sshd_config.bak-$(date +%F-%H%M%S)"
 SSH_Port="22"

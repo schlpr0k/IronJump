@@ -299,11 +299,11 @@ f_ssh_hard_s17() {
 f_setup_ironjump() {
     f_sshd_setup
     harden_ssh_service
-    echo "Creating Chroot Environment."; sleep 1
+    echo "Creating Chroot Environment."
     mkdir -p /home/ironjump/{users,servers,endpoints}/chroot
     chown -R root:root /home/ironjump
     chmod -R 755 /home/ironjump
-    echo "Creating IronSync Account"; sleep 1
+    echo "Creating IronSync Account"
     useradd -U -m -d $IRONJUMP_CHROOT_ENV/servers/chroot/ironsync ironsync; sleep 1
     mkdir $IRONJUMP_CHROOT_ENV/servers/chroot/ironsync/.ssh
     touch $IRONJUMP_CHROOT_ENV/servers/chroot/ironsync/.ssh/authorized_keys
@@ -313,12 +313,15 @@ f_setup_ironjump() {
     local sync_pass=$(openssl rand -base64 64)
     echo "ironsync:"$sync_pass |chpasswd ; sleep 1
     unset sync_pass
-    read -p "Stopping here for a moment."
-    echo "Creating IronJump Groups."; sleep 1
+    echo "Creating IronJump Groups."
     groupadd $IRONJUMP_SSH_GROUP
     groupadd $IRONJUMP_SRV_GROUP
     groupadd $IRONJUMP_END_GROUP
-    groupadd ingot-registry
+    groupadd ingot_registry
+    if [[ -z $(cat /etc/sudoers |grep ingot_registry) ]]; then
+        echo -e "\r\n#Sudoers entry for IronJump Automation" >>/etc/sudoers
+        echo '%ingot_registry ALL=(ALL) NOPASSWD: /usr/bin/gpasswd -d * ingot_registry, /usr/bin/gpasswd -a * ironjump_endpoints, /usr/bin/chsh -s /usr/sbin/nologin *' >>/etc/sudoers
+    fi
     echo "Adding groups to SSH Configuration."; sleep 1
     sed -i "/^Match Group $IRONJUMP_SSH_GROUP/,/\#END MATCH GROUP/d" $SSH_CONFIG_FILE
     cat << EOF >> $SSH_CONFIG_FILE
@@ -362,10 +365,9 @@ Match Group $IRONJUMP_END_GROUP
     Subsystem sftp none
 #END MATCH GROUP
 EOF
-    sed -i "/^Match Group ingot-registry/,/\#END MATCH GROUP/d" $SSH_CONFIG_FILE
+    sed -i "/^Match Group ingot_registry/,/\#END MATCH GROUP/d" $SSH_CONFIG_FILE
     cat << EOF >> $SSH_CONFIG_FILE
-Match Group ingot-registry
-    ChrootDirectory $IRONJUMP_CHROOT_ENV/servers/chroot/ironsync
+Match Group ingot_registry
     ForceCommand ~/ingot-registration.sh
     PermitTTY no
     AllowTcpForwarding no
@@ -375,6 +377,8 @@ Match Group ingot-registry
     Subsystem sftp none
 #END MATCH GROUP
 EOF
+    systemctl restart ssh
+    systemctl daemon-reload
     f_cron_configuration
     read -p "Setup Complete. Press [ENTER] to continue."
 }
@@ -460,10 +464,20 @@ f_os_identity() {
     while read -r i; do echo -e "## IP Address:\t$i\r\n"; done < <(ip a |grep "inet\ " |grep -v "127.0.0.1" | awk '{print $2,$9}')
 }
 
+f_make_setup() {
+    # Check if make utility is installed. Required for AutoSSH.
+    case "$PKG_MANAGER" in
+        "apt") sudo apt install -y make ;;
+        "yum") sudo yum install -y make ;;
+        "dnf") sudo dnf install -y make;;
+        "pacman") sudo pacman -Sy --noconfirm make ;;
+        "pkg") sudo pkg install -y make ;;
+        "pkg_add") sudo pkg_add make ;;
+        *) echo "Package manager not recognized. Cannot install the make utility."; return 1 ;;
+    esac
+
 f_sshd_setup() {
     # Check if SSH client is installed
-#    if ! command -v ssh &> /dev/null; then
-#    echo "SSH client is not installed. Installing..."
     case "$PKG_MANAGER" in
         "apt") sudo apt update && sudo apt install -y openssh-client openssh-server ssh ;;
         "yum") sudo yum install -y openssh-clients openssh-server ssh ;;
@@ -473,25 +487,6 @@ f_sshd_setup() {
         "pkg_add") sudo pkg_add openssh ;;
         *) echo "Package manager not recognized. Cannot install SSH client."; return 1 ;;
     esac
-#    else
-#        echo "SSH client is already installed."
-#    fi
-
-#    # Check if SSH server (SSHD) is installed
-#    if ! command -v sshd &> /dev/null; then
-#        echo "SSHD is not installed. Installing..."
-#        case "$PKG_MANAGER" in
-#            "apt") sudo apt update && sudo apt install -y openssh-server ;;
-#            "yum") sudo yum install -y openssh-server ;;
-#            "dnf") sudo dnf install -y openssh-server ;;
-#            "pacman") sudo pacman -Sy --noconfirm openssh ;;
-#            "pkg") sudo pkg install -y openssh ;;
-#            "pkg_add") sudo pkg_add openssh ;;
-#            *) echo "Package manager not recognized. Cannot install SSHD."; return 1 ;;
-#        esac
-#    else
-#        echo "SSHD is already installed."
-#    fi
 
     # Enable and start SSHD at boot
     echo "Enabling and starting SSHD..."
@@ -775,31 +770,49 @@ dev_mgmt_new() {
     local dev_new_set_homedir="$IRONJUMP_CHROOT_ENV/endpoints/chroot/$ep_account_name"
     local dev_new_set_sshdir="$dev_new_set_homedir/.ssh"
     local dev_new_set_authorized_keys="$dev_new_set_sshdir/authorized_keys"
-    useradd -U -m -s $(which nologin) -d $dev_new_set_homedir -c "$ep_new_location" -G ingot-registry $ep_account_name
+    useradd -U -m -s $(which bash) -d $dev_new_set_homedir -c "$ep_new_location" -G ingot_registry $ep_account_name
     mkdir -p $dev_new_set_sshdir
     echo "$dev_new_set_pubkey" > $dev_new_set_authorized_keys
     chown -R $ep_account_name:$ep_account_name $dev_new_set_sshdir
     #Create Keys
-    ssh-keygen -t ed25519 -f "$dev_new_set_sshdir/ironsync_key" -N ""
+    ssh-keygen -t ed25519 -f "$dev_new_set_sshdir/ironsync_key" -N "" -C $ep_account_name
     mv $dev_new_set_sshdir/ironsync_key $dev_new_set_homedir/ironsync_key
     cat $dev_new_set_sshdir/ironsync_key.pub >> /home/ironjump/servers/chroot/ironsync/.ssh/authorized_keys
     rm -f $dev_new_set_sshdir/ironsync_key.pub
-    ssh-keygen -t ed25519 -f "$dev_new_set_sshdir/ironjump_key" -N ""
+    ssh-keygen -t ed25519 -f "$dev_new_set_sshdir/ironjump_key" -N "" -C $ep_account_name
     mv $dev_new_set_sshdir/ironjump_key $dev_new_set_homedir/ironjump_key
     mv $dev_new_set_sshdir/ironjump_key.pub $dev_new_set_sshdir/authorized_keys
-    #Add to Group ingot-registry
-    usermod  -aG ingot-registry "$ep_account_name"
+    #Add to Group ingot_registry
+    usermod  -aG ingot_registry "$ep_account_name"
     #Generate Access Token / First Time Password XXXX-XXXX-XXXX
-    local token=$(cat /dev/urandom | tr -dc 'AC-NP-Z1-79' | fold -w4 | head -n3 | paste -sd'-' -)
+    local token=$(cat /dev/urandom | tr -dc 'ACH-J-NP-Z2-79' | fold -w4 | head -n3 | paste -sd'-' -)
     echo $ep_account_name:$token | chpasswd
     #Create ingot-registration.sh, access_control, and ingot-keys files
     touch $dev_new_set_homedir/access_control
-    echo '#!/bin/bash' >$dev_new_set_homedir/ingot-registration.sh
-    echo "cat ~/ingot-keys" >>$dev_new_set_homedir/ingot-registration.sh
-    echo "sleep 1" >>$dev_new_set_homedir/ingot-registration.sh
-    echo "rm -f ~/ingot-keys" >>$dev_new_set_homedir/ingot-registration.sh
-    echo "sleep 1" >>$dev_new_set_homedir/ingot-registration.sh
-    echo "date >~/registration_complete" >>$dev_new_set_homedir/ingot-registration.sh
+    cat <<EOF > "$dev_new_set_homedir/ingot-registration.sh"
+#!/bin/bash
+self_destruct="\$0"
+cat ~/ingot-keys
+sleep 1
+rm -f ~/ingot-keys
+sleep 1
+sudo -n chsh -s /usr/sbin/nologin \$USER
+sudo -n gpasswd -a \$USER ironjump_endpoints
+sudo -n gpasswd -d \$USER ingot_registry
+date > ~/registration_complete
+rm -- "\$self_destruct"
+EOF
+#    echo '#!/bin/bash' >$dev_new_set_homedir/ingot-registration.sh
+#    echo 'self_destruct="$0"' >>$dev_new_set_homedir/ingot-registration.sh
+#    echo "cat ~/ingot-keys" >>$dev_new_set_homedir/ingot-registration.sh
+#    echo "sleep 1" >>$dev_new_set_homedir/ingot-registration.sh
+#    echo "rm -f ~/ingot-keys" >>$dev_new_set_homedir/ingot-registration.sh
+#    echo "sleep 1" >>$dev_new_set_homedir/ingot-registration.sh
+#    echo 'sudo gpasswd -a $USER ironjump_endpoints' >>$dev_new_set_homedir/ingot-registration.sh
+#    echo 'sudo gpasswd -d $USER ingot_registry' >>$dev_new_set_homedir/ingot-registration.sh
+#    echo 'sudo chsh -s /usr/sbin/nologin $USER' >>$dev_new_set_homedir/ingot-registration.sh
+#    echo "date >~/registration_complete" >>$dev_new_set_homedir/ingot-registration.sh
+#    echo 'rm -- "$self_destruct" >>$dev_new_set_homedir/ingot-registration.sh
     chmod +x $dev_new_set_homedir/ingot-registration.sh
     echo "ironjump_key="\"$(cat $dev_new_set_homedir/ironjump_key)\" >>$dev_new_set_homedir/ingot-keys
     echo "ironsync_key="\"$(cat $dev_new_set_homedir/ironsync_key)\" >>$dev_new_set_homedir/ingot-keys
@@ -846,7 +859,8 @@ dev_mgmt_set_expire() {
 
 #ep_mgmt_menu
 ep_connect() {
-    f_ssh_setup
+    f_sshd_setup
+    f_make_setup
     f_cron_setup
     clear
     echo "IronJump SSH Management : Endpoint Registration Wizard"
@@ -859,30 +873,34 @@ ep_connect() {
     read -p "    What is this endpoint's name: " ironjump_ep_name
     read -p "    Where you provided an SSH access token? (yes/no): " has_token
     case $has_token in
-        No|no|N|n) echo -e "You cannot proceed without a token." ; sleep 5 ; ep_mgmt_menu ;;
+        No|no|N|n) read -p "You cannot proceed without a token." ; ep_mgmt_menu ;;
         Yes|yes|Y|y) sleep 1 ;;
         *) invalid_choice ; ep_mgmt_menu ;;
     esac
     clear
     echo "IronJump SSH Management : Endpoint Registration Wizard"
     nav_top_bar
-    echo -e "INFO: This endpoint will attempt registration using\nthe following information:\n    IronJump SSH Server:\t$ironjump_srv_ip\n    Username:\t$ironjump_ep_name\r\n"
+    echo -e "INFO: This endpoint will attempt registration using\nthe following information:\n    IronJump SSH Server:\t$ironjump_srv_ip\n    Username:\t\t$ironjump_ep_name\r\n"
     nav_breaker_bar
     echo -e "When prompted, please use the access token for SSH.\n"
     read -p "Press [ENTER] to continue." continue
     clear
-    if [[ ! -f /root/.ssh ]]; then mkdir /root/.ssh; chmod 0700 /root/.ssh; fi
+    if [[ ! -d /root/.ssh ]]; then mkdir /root/.ssh; chmod 0700 /root/.ssh; fi
     ssh $ironjump_ep_name@$ironjump_srv_ip |tee /root/ingot-keys
     echo "Migrating Keys"; sleep 5
     echo $ironjump_ep_name > /etc/hostname
-    if [[ ! -z $HOST ]]; then sed -i "s/$HOST/$ironjump_ep_name/g' /etc/hosts; fi
-    if [[ ! -z $HOSTNAME ]]; then sed -i "s/$HOSTNAME/$ironjump_ep_name/g' /etc/hosts; fi
-    $HOST=$ironjump_ep_name
-    $HOSTNAME=$ironjump_ep_name
+    if [[ ! -z $HOST ]]; then sed -i "s/$HOST/$ironjump_ep_name/g" /etc/hosts; fi
+    if [[ ! -z $HOSTNAME ]]; then sed -i "s/$HOSTNAME/$ironjump_ep_name/g" /etc/hosts; fi
+    HOST=$ironjump_ep_name
+    HOSTNAME=$ironjump_ep_name
     cat /root/ingot-keys |grep ironjump_key |cut -d '"' -f2 |sed -e 's/-\ /-\n/g' -e 's/\ -/\n-/g' >/root/.ssh/ironjump_key
     cat /root/ingot-keys |grep ironsync_key |cut -d '"' -f2 |sed -e 's/-\ /-\n/g' -e 's/\ -/\n-/g' >/root/.ssh/ironsync_key
     rm -f /root/ingot-keys
     chmod 0600 /root/.ssh/iron*_key
+    cd autossh
+    .configure
+    make
+    make install
     read -p "Complete. Press [ENTER] to continue." continue
     ep_mgmt_menu
 }
@@ -944,6 +962,10 @@ ssh_monitor() {
         done
 
         # Add a separator for readability
+        echo "--------------------------------------------"
+        echo "RAW VIEW
+        echo "--------------------------------------------"
+        lsof -i -n -P |grep ssh |grep -v "root\|7u \|8u "
         echo "--------------------------------------------"
         echo "[Press Ctrl+C to Return to Main Menu]"
         # Sleep for 3 seconds before refreshing

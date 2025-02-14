@@ -11,6 +11,11 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
+#Save current directory and Migrate to IronJump working directory
+OLDPWD=$(pwd)
+SCRIPT_DIR="$(echo $0 |sed 's/\/IronJump\.sh//')"
+cd $SCRIPT_DIR || exit 1
+
 # Check for config file
 if [[ -f $(echo $(pwd)/CONFIG.FILE) ]]; then
     source ./CONFIG.FILE
@@ -19,8 +24,13 @@ else
     exit 1
 fi
 
-# FUNCTIONS
-source ./FUNCTIONS
+# Check for FUNCTIONS file
+if [[ -f $(echo $(pwd)/FUNCTIONS) ]]; then
+    source ./FUNCTIONS
+else
+    echo "FUNCTIONS file must be in the working directory to continue."
+    exit 1
+fi
 
 ### Menu Construction ###
 nav_top_bar() {
@@ -68,7 +78,7 @@ main_menu() {
         3) access_control_mgmt_menu ; main_menu ;;
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
-        Q|q) exit 0 ;;
+        Q|q) cd $OLDPWD ; exit 0 ;;
         *) invalid_choice ; main_menu ;;
     esac
 }
@@ -93,7 +103,7 @@ root_server_mgmt_menu() {
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
         P|p) main_menu ;;
-        Q|q) exit 0 ;;
+        Q|q) cd $OLDPWD ; exit 0 ;;
         *) invalid_choice; root_server_mgmt_menu ;;
     esac
 }
@@ -120,7 +130,7 @@ root_server_config_deploy_mgmt_menu() {
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
         P|p) root_server_mgmt_menu ;;
-        Q|q) exit 0 ;;
+        Q|q) cd $OLDPWD ; exit 0 ;;
         *) invalid_choice; root_server_config_deploy_mgmt_menu ;;
     esac
 }
@@ -153,7 +163,7 @@ root_server_user_acct_mgmt_menu() {
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
         P|p) root_server_mgmt_menu ;;
-        Q|q) exit 0 ;;
+        Q|q) cd $OLDPWD ; exit 0 ;;
         *) invalid_choice ; root_server_user_acct__mgmt_menu ;;
     esac
 }
@@ -186,7 +196,7 @@ root_server_endpoint_acct_mgmt_menu() {
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
         P|p) root_server_mgmt_menu ;;
-        Q|q) exit 0 ;;
+        Q|q) cd $OLDPWD ; exit 0 ;;
         *) invalid_choice ; root_server_endpoint_acct_mgmt_menu ;;
     esac
 }
@@ -214,7 +224,7 @@ endpoint_device_mgmt_menu() {
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
         P|p) main_menu ;;
-        Q|q) exit 0 ;;
+        Q|q) cd $OLDPWD ; exit 0 ;;
         *) invalid_choice ; endpoint_device_mgmt_menu ;;
     esac
 }
@@ -262,7 +272,7 @@ endpoint_device_local_mgmt_menu() {
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
         P|p) endpoint_device_mgmt_menu ;;
-        Q|q) exit 0 ;;
+        Q|q) cd $OLDPWD ; exit 0 ;;
         *) invalid_choice ; endpoint_device_local_mgmt_menu ;;
     esac
 }
@@ -287,7 +297,7 @@ access_control_mgmt_menu() {
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
         P|p) main_menu ;;
-        Q|q) exit 0 ;;
+        Q|q) cd $OLDPWD ; exit 0 ;;
         *) invalid_choice ; access_control_mgmt_menu ;;
     esac
 }
