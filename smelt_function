@@ -1,0 +1,58 @@
+smelt() {
+    echo "! WARNING: This will permanently destroy the system and wipe all data. !"
+    echo "❗ This action is irreversible and will render the system unusable.    !"
+    
+    # Confirmation prompt
+    read -p "Type 'DESTROY' to confirm: " confirmation
+    if [[ "$confirmation" != "DESTROY" ]]; then
+        echo "Operation aborted. System destruction not initiated."
+        return 1
+    fi
+
+    echo "🔥 Starting system destruction in 60 seconds... Press CTRL+C to abort. 🔥"
+
+    # Countdown timer (CTRL+C can stop execution)
+    for i in {60..1}; do
+        echo -ne "Time remaining: $i seconds...\r"
+        sleep 1
+    done
+    echo -e "\nProceeding with system destruction..."
+
+    # 1. Kill all SSH connections to prevent remote intervention
+    echo "[*] Killing all SSH connections..."
+    pkill -u $(whoami) sshd
+    sleep 2
+
+    # 2. Overwrite all disks with random data to prevent recovery
+    echo "[*] Wiping all disks..."
+    for disk in $(lsblk -dpno NAME | grep -E '/dev/(sd|vd|nvme|mmcblk)'); do
+        echo "Wiping $disk..."
+        dd if=/dev/urandom of=$disk bs=4M status=progress || shred -vfz $disk
+    done
+
+    # 3. Overwrite swap space (if enabled)
+    echo "[*] Wiping swap..."
+    swapoff -a
+    dd if=/dev/urandom of=/dev/zero bs=1M count=100
+
+    # 4. Destroy all partitions and filesystems
+    echo "[*] Destroying partition tables..."
+    for disk in $(lsblk -dpno NAME | grep -E '/dev/(sd|vd|nvme|mmcblk)'); do
+        wipefs --all --force $disk
+        sgdisk --zap-all $disk
+    done
+
+    # 5. Remove critical system files to render the OS unbootable
+    echo "[*] Deleting system files..."
+    rm -rf /boot /bin /sbin /lib /lib64 /usr /etc /home /var /root
+
+    # 6. Overwrite system logs and memory to eliminate traces
+    echo "[*] Wiping logs and memory..."
+    cat /dev/urandom > /dev/mem || true
+    rm -rf /var/log/*
+
+    # 7. Force shutdown the system
+    echo "[*] System destruction complete. Powering off..."
+    sleep 2
+    systemctl poweroff -f
+}

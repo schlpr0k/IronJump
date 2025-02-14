@@ -46,7 +46,7 @@ f_ssh_hard_os_selection() {
     echo "16. pfSense 2.4"
     echo "17. OpenBSD 6.2 Server"
     nav_breaker_bar
-    read -p "Enter your coice: " choice
+    read -p "Enter your choice: " choice
     case $choice in
         1) f_ssh_hard_regen_hostkeys_1 ; f_ssh_hard_s1 ;;
         2) f_ssh_hard_regen_hostkeys_1 ; f_ssh_hard_s2 ;;
@@ -65,6 +65,9 @@ f_ssh_hard_os_selection() {
         15) f_ssh_hard_regen_hostkeys_3 ; f_ssh_hard_s15 ;;
         16) f_ssh_hard_regen_hostkeys_1 ; f_ssh_hard_s16 ;;
         17) f_ssh_hard_regen_hostkeys_1 ; f_ssh_hard_s17 ;;
+        R|r) ast_reboot ;;
+        P|p) main_menu ;;
+        Q|q) exit 0 ;;
         *) invalid_choice ; f_ssh_hard_os_selection ;;
     esac
 }
@@ -72,7 +75,7 @@ f_ssh_hard_os_selection() {
 f_ssh_hard_check() {
     if [[ -f $SSH_CONFIG_FILE ]]; then
         echo -e "\r\n\tFound SSH Configuration File"
-        echo -e "\t  !Recommended Action: Would you like to make a backup? (y/n)"
+        echo -e "\tWould you like to make a backup? (y/n)"
         echo -e "\t-------------------"
         read -p "Enter your choice: " choice
         case "$choice" in
@@ -303,22 +306,10 @@ f_setup_ironjump() {
     mkdir -p /home/ironjump/{users,servers,endpoints}/chroot
     chown -R root:root /home/ironjump
     chmod -R 755 /home/ironjump
-    echo "Creating IronSync Account"; sleep 1
-    useradd -U -m -d $IRONJUMP_CHROOT_ENV/servers/chroot/ironsync ironsync; sleep 1
-    mkdir $IRONJUMP_CHROOT_ENV/servers/chroot/ironsync/.ssh
-    touch $IRONJUMP_CHROOT_ENV/servers/chroot/ironsync/.ssh/authorized_keys
-    chown -R ironsync:ironsync $IRONJUMP_CHROOT_ENV/servers/chroot/ironsync
-    chmod 700 $IRONJUMP_CHROOT_ENV/servers/chroot/ironsync/.ssh
-    chmod 600 $IRONJUMP_CHROOT_ENV/servers/chroot/ironsync/.ssh/authorized_keys
-    local sync_pass=$(openssl rand -base64 64)
-    echo "ironsync:"$sync_pass |chpasswd ; sleep 1
-    unset sync_pass
-    read -p "Stopping here for a moment."
     echo "Creating IronJump Groups."; sleep 1
     groupadd $IRONJUMP_SSH_GROUP
     groupadd $IRONJUMP_SRV_GROUP
     groupadd $IRONJUMP_END_GROUP
-    groupadd ingot-registry
     echo "Adding groups to SSH Configuration."; sleep 1
     sed -i "/^Match Group $IRONJUMP_SSH_GROUP/,/\#END MATCH GROUP/d" $SSH_CONFIG_FILE
     cat << EOF >> $SSH_CONFIG_FILE
@@ -362,21 +353,7 @@ Match Group $IRONJUMP_END_GROUP
     Subsystem sftp none
 #END MATCH GROUP
 EOF
-    sed -i "/^Match Group ingot-registry/,/\#END MATCH GROUP/d" $SSH_CONFIG_FILE
-    cat << EOF >> $SSH_CONFIG_FILE
-Match Group ingot-registry
-    ChrootDirectory $IRONJUMP_CHROOT_ENV/servers/chroot/ironsync
-    ForceCommand ~/ingot-registration.sh
-    PermitTTY no
-    AllowTcpForwarding no
-    GatewayPorts no
-    PermitTunnel no
-    PasswordAuthentication yes
-    Subsystem sftp none
-#END MATCH GROUP
-EOF
     f_cron_configuration
-    read -p "Setup Complete. Press [ENTER] to continue."
 }
 
 f_os_identity() {
@@ -547,10 +524,16 @@ f_cron_configuration() {
 #    echo "0 */$PASSWORD_ROTATION * * * root /bin/ironjump_pass_rotation.sh"
     chmod 644 /bin/ironjump_pass_rotation.sh
     echo -e "\r\n--------------------------------------------------------"
+    read -p "Setup Complete. Press [ENTER] to continue."
 }
 
 ## MENU FUNCTIONS (In Order of Appearance)
 #deployment_menu
+deploy_root() {
+    f_setup_ironjump
+    main_menu
+}
+
 deploy_secondary() {
     #f_ssh_hard_check
     #f_ssh_hard_os_selection
@@ -608,6 +591,7 @@ usr_mgmt_list() {
 }
 
 usr_mgmt_new() {
+#    read -p "Function Good" ; usr_acct_mgmt_menu
     clear
     echo "Create/Add SSH User"
     nav_top
@@ -743,85 +727,11 @@ usr_mgmt_set_expire() {
 
 #dev_acct_mgmt_menu
 dev_mgmt_list() {
-    echo -e "\r\nEndpoint Accounts"
-    echo "================="
-    local EP_ACCTS=$(ls -al /home/ironjump/endpoints/chroot |awk '{print $9}' |grep -v "^\\.\|^$")
-    if [[ -z $EP_ACCTS ]]; then
-        echo "No Endpoint Accounts Exist."
-    else
-        echo $EP_ACCTS
-    fi
-    echo -e "\r\n"
-    read -p "Press ENTER to return." choice
+    read -p "Function Good" ; dev_acct_mgmt_menu
 }
 
 dev_mgmt_new() {
-    clear
-    echo "IronJump SSH Management - New Endpoint Account Creation"
-    nav_top_bar
-    echo "Creating account for new Endpoint deployment..."
-    read -p "Where will this endpoint be located? " ep_new_location
-    local ep_base="ingot-"
-    local ep_num=$(ls -al /home/ironjump/endpoints/chroot |awk '{print $9}' |grep -v "^\\.\|^$" |tail -n 1 |tr -d $ep_base)
-    if [[ -z $ep_num ]]; then
-        ep_num="50000"
-    elif [[ $(($ep_num + 1)) -gt 59999 ]]; then
-        ep_num="50000"
-    else
-        ep_num=$(($ep_num + 1))
-    fi
-    local ep_account_name=$ep_base$ep_num
-    #Create Endpoint Account
-    local dev_new_set_homedir="$IRONJUMP_CHROOT_ENV/endpoints/chroot/$ep_account_name"
-    local dev_new_set_sshdir="$dev_new_set_homedir/.ssh"
-    local dev_new_set_authorized_keys="$dev_new_set_sshdir/authorized_keys"
-    useradd -U -m -s $(which nologin) -d $dev_new_set_homedir -c "$ep_new_location" -G ingot-registry $ep_account_name
-    mkdir -p $dev_new_set_sshdir
-    echo "$dev_new_set_pubkey" > $dev_new_set_authorized_keys
-    chown -R $ep_account_name:$ep_account_name $dev_new_set_sshdir
-    #Create Keys
-    ssh-keygen -t ed25519 -f "$dev_new_set_sshdir/ironsync_key" -N ""
-    mv $dev_new_set_sshdir/ironsync_key $dev_new_set_homedir/ironsync_key
-    cat $dev_new_set_sshdir/ironsync_key.pub >> /home/ironjump/servers/chroot/ironsync/.ssh/authorized_keys
-    rm -f $dev_new_set_sshdir/ironsync_key.pub
-    ssh-keygen -t ed25519 -f "$dev_new_set_sshdir/ironjump_key" -N ""
-    mv $dev_new_set_sshdir/ironjump_key $dev_new_set_homedir/ironjump_key
-    mv $dev_new_set_sshdir/ironjump_key.pub $dev_new_set_sshdir/authorized_keys
-    #Add to Group ingot-registry
-    usermod  -aG ingot-registry "$ep_account_name"
-    #Generate Access Token / First Time Password XXXX-XXXX-XXXX
-    local token=$(cat /dev/urandom | tr -dc 'AC-NP-Z1-79' | fold -w4 | head -n3 | paste -sd'-' -)
-    echo $ep_account_name:$token | chpasswd
-    #Create ingot-registration.sh, access_control, and ingot-keys files
-    touch $dev_new_set_homedir/access_control
-    echo '#!/bin/bash' >$dev_new_set_homedir/ingot-registration.sh
-    echo "cat ~/ingot-keys" >>$dev_new_set_homedir/ingot-registration.sh
-    echo "sleep 1" >>$dev_new_set_homedir/ingot-registration.sh
-    echo "rm -f ~/ingot-keys" >>$dev_new_set_homedir/ingot-registration.sh
-    echo "sleep 1" >>$dev_new_set_homedir/ingot-registration.sh
-    echo "date >~/registration_complete" >>$dev_new_set_homedir/ingot-registration.sh
-    chmod +x $dev_new_set_homedir/ingot-registration.sh
-    echo "ironjump_key="\"$(cat $dev_new_set_homedir/ironjump_key)\" >>$dev_new_set_homedir/ingot-keys
-    echo "ironsync_key="\"$(cat $dev_new_set_homedir/ironsync_key)\" >>$dev_new_set_homedir/ingot-keys
-    sleep 1
-    rm -f $dev_new_set_homedir/ironjump_key
-    rm -f $dev_new_set_homedir/ironsync_key
-    #Set Permissions
-    chown -R $ep_account_name:$ep_account_name $dev_new_set_homedir
-    chmod 700 "$dev_new_set_sshdir"
-    chmod 600 "$dev_new_set_authorized_keys"
-    chown root:ironsync $dev_new_set_homedir/access_control
-    chmod 0740 $dev_new_set_homedir/access_control
-    #Display Username and Password Instructions
-    clear
-    echo "IronJump - New Endpoint Account (Credentials)"
-    nav_top_bar
-    echo "Username: "$ep_account_name
-    echo "Password: "$token
-    echo -e "\r\n!!!Write this down!!!\nThese are single use credentials for endpoint registraiton.\n\nAdvancing to the next screen will remove the credentials \nfrom view and they will not be shown again."
-    nav_breaker_bar
-    unset token
-    read -p "Press ENTER to return." choice
+    read -p "Function Good" ; dev_acct_mgmt_menu
 }
 
 dev_mgmt_enable() {
@@ -846,44 +756,10 @@ dev_mgmt_set_expire() {
 
 #ep_mgmt_menu
 ep_connect() {
-    f_ssh_setup
-    f_cron_setup
-    clear
-    echo "IronJump SSH Management : Endpoint Registration Wizard"
-    nav_top_bar
-    echo -e "INFO: This wizard will connect this endpoint to an\nIronJump Server. You will need the following to continue:\n    * The IronJump Server IP Address\n    * The endpoint account name\n    * The one-time access token\r\n"
-    nav_breaker_bar
-    read -p "Press [ENTER] to continue" continue
-    echo  -e "\r\n Collect Information for Registration\n"
-    read -p "    What is the IronJump Server IP: " ironjump_srv_ip
-    read -p "    What is this endpoint's name: " ironjump_ep_name
-    read -p "    Where you provided an SSH access token? (yes/no): " has_token
-    case $has_token in
-        No|no|N|n) echo -e "You cannot proceed without a token." ; sleep 5 ; ep_mgmt_menu ;;
-        Yes|yes|Y|y) sleep 1 ;;
-        *) invalid_choice ; ep_mgmt_menu ;;
-    esac
-    clear
-    echo "IronJump SSH Management : Endpoint Registration Wizard"
-    nav_top_bar
-    echo -e "INFO: This endpoint will attempt registration using\nthe following information:\n    IronJump SSH Server:\t$ironjump_srv_ip\n    Username:\t$ironjump_ep_name\r\n"
-    nav_breaker_bar
-    echo -e "When prompted, please use the access token for SSH.\n"
-    read -p "Press [ENTER] to continue." continue
-    clear
-    if [[ ! -f /root/.ssh ]]; then mkdir /root/.ssh; chmod 0700 /root/.ssh; fi
-    ssh $ironjump_ep_name@$ironjump_srv_ip |tee /root/ingot-keys
-    echo "Migrating Keys"; sleep 5
-    echo $ironjump_ep_name > /etc/hostname
-    if [[ ! -z $HOST ]]; then sed -i "s/$HOST/$ironjump_ep_name/g' /etc/hosts; fi
-    if [[ ! -z $HOSTNAME ]]; then sed -i "s/$HOSTNAME/$ironjump_ep_name/g' /etc/hosts; fi
-    $HOST=$ironjump_ep_name
-    $HOSTNAME=$ironjump_ep_name
-    cat /root/ingot-keys |grep ironjump_key |cut -d '"' -f2 |sed -e 's/-\ /-\n/g' -e 's/\ -/\n-/g' >/root/.ssh/ironjump_key
-    cat /root/ingot-keys |grep ironsync_key |cut -d '"' -f2 |sed -e 's/-\ /-\n/g' -e 's/\ -/\n-/g' >/root/.ssh/ironsync_key
-    rm -f /root/ingot-keys
-    chmod 0600 /root/.ssh/iron*_key
-    read -p "Complete. Press [ENTER] to continue." continue
+#    read -p "Function Good" ; ep_mgmt_menu
+    #f_ssh_*
+    #f_ssh_os_selection
+    #usr_mgmt_new
     ep_mgmt_menu
 }
 
