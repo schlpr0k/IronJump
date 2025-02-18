@@ -1,6 +1,5 @@
 #!/bin/bash
 ## NAVIGATION Functions
-
 ast_reboot() {
     echo -e "\r\nAre you sure you want to reboot the server?"
     prompt_reboot
@@ -23,7 +22,7 @@ invalid_choice() {
 }
 
 
-## IRONJUMP FUNCTIONS (Alphabetical Order)
+## IRONJUMP FUNCTIONS
 f_ssh_hard_os_selection() {
     clear
     echo "Select the operating system to perform SSH hardening..."
@@ -46,7 +45,7 @@ f_ssh_hard_os_selection() {
     echo "16. pfSense 2.4"
     echo "17. OpenBSD 6.2 Server"
     nav_breaker_bar
-    read -p "Enter your coice: " choice
+    read -p "Enter your choice: " choice
     case $choice in
         1) f_ssh_hard_regen_hostkeys_1 ; f_ssh_hard_s1 ;;
         2) f_ssh_hard_regen_hostkeys_1 ; f_ssh_hard_s2 ;;
@@ -186,55 +185,62 @@ f_ssh_set_configuration() {
     sed -i "s/^\#ClientAliveCountMax .*$\|^ClientAliveCountMax .*$/ClientAliveCountMax $SSH_ClientAliveCountMax/" $SSH_CONFIG_FILE
     sed -i "s/^\#UseDNS .*$\|^UseDNS .*$/UseDNS $SSH_UseDNS/" $SSH_CONFIG_FILE
     sed -i "s/^\#PermitTunnel .*$\|^PermitTunnel .*$/PermitTunnel $SSH_PermitTunnel/" $SSH_CONFIG_FILE
-    read -p "SSH Configuration Set. Press any key to continue."
+    sed -i "s/^\#AcceptEnv .*$\|^AcceptEnv .*$/AcceptEnv ac_host LANG LC_\* /" $SSH_CONFIG_FILE
 }
 
 f_ssh_hard_s1() {
     #Specific hardening commands for Amazon Linux 2023
     echo -e "# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org,gss-curve25519-sha256-,diffie-hellman-group16-sha512,gss-group16-sha512-,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\n\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-gcm@openssh.com,aes128-ctr\n\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\n\nHostKeyAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nCASignatureAlgorithms sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nGSSAPIKexAlgorithms gss-curve25519-sha256-,gss-group16-sha512-\n\nHostbasedAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-256\n\nPubkeyAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\n" > /etc/crypto-policies/back-ends/opensshserver.config
+    f_ssh_set_configuration
     systemctl restart sshd
 }
 
 f_ssh_hard_s2() {
     #Specific hardening commands for Ubuntu 24.04
     echo -e "# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms sntrup761x25519-sha512@openssh.com,gss-curve25519-sha256-,curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256,gss-group16-sha512-,diffie-hellman-group16-sha512\n\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-gcm@openssh.com,aes128-ctr\n\nMACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com\n\nRequiredRSASize 3072\n\nHostKeyAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nCASignatureAlgorithms sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nGSSAPIKexAlgorithms gss-curve25519-sha256-,gss-group16-sha512-\n\nHostbasedAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nPubkeyAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256" > /etc/ssh/sshd_config.d/ssh-audit_hardening.conf
-    service ssh restart
+    f_ssh_set_configuration
+    systemctl restart ssh
 }
 
 f_ssh_hard_s3() {
     #Specific hardening commands for Ubuntu 22.04
     echo -e "# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org,gss-curve25519-sha256-,diffie-hellman-group16-sha512,gss-group16-sha512-,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\n\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-gcm@openssh.com,aes128-ctr\n\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\n\nHostKeyAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nCASignatureAlgorithms sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nGSSAPIKexAlgorithms gss-curve25519-sha256-,gss-group16-sha512-\n\nHostbasedAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-256\n\nPubkeyAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-256" > /etc/ssh/sshd_config.d/ssh-audit_hardening.conf
     f_ssh_set_configuration
-    service ssh restart
+    systemctl restart ssh
 }
 
 f_ssh_hard_s4() {
     #Specific hardening commands for Ubuntu 20.04
     echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\nHostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,sk-ssh-ed25519-cert-v01@openssh.com,rsa-sha2-256,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com" > /etc/ssh/sshd_config.d/ssh-audit_hardening.conf
+    f_ssh_set_configuration
     service ssh restart
 }
 
 f_ssh_hard_s5() {
     #Specific harding commands for Ubuntu 18.04
     echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\nHostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com" >> $SSH_CONFIG_FILE
+    f_ssh_set_configuration
     service ssh restart
 }
 
 f_ssh_hard_s6() {
     #Specific hardening commands for Ubuntu 16.04
     echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com" >> $SSH_CONFIG_FILE
+    f_ssh_set_configuration
     service ssh restart
 }
 
 f_ssh_hard_s7() {
     #Specific hardening commands for Ubuntu 14.04
     echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com" >> $SSH_CONFIG_FILE
+    f_ssh_set_configuration
     service ssh restart
 }
 
 f_ssh_hard_s8() {
     #Specific hardening commands for Ubuntu Core 18
     echo -e "\n# Only enable RSA and ED25519 host keys.\nHostKey /etc/ssh/ssh_host_rsa_key\nHostKey /etc/ssh/ssh_host_ed25519_key\n\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com" >> $SSH_CONFIG_FILE
+    f_ssh_set_configuration
     service ssh reload
 }
 
@@ -242,30 +248,35 @@ f_ssh_hard_s9() {
     #Specific hardening commands for Ubuntu Core 16
     sed -i 's/^MACs \(.*\)$/\#MACs \1/g' $SSH_CONFIG_FILE
     echo -e "\n# Restrict MAC algorithms, as per sshaudit.com hardening guide.\nMACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com" >> $SSH_CONFIG_FILE
+    f_ssh_set_configuration
     service ssh reload
 }
 
 f_ssh_hard_s10() {
     #Specific hardening commands for Debian Bookworm (Debian 12)
     echo -e "# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\n KexAlgorithms sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org,gss-curve25519-sha256-,diffie-hellman-group16-sha512,gss-group16-sha512-,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\n\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-gcm@openssh.com,aes128-ctr\n\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\n\nHostKeyAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nRequiredRSASize 3072\n\nCASignatureAlgorithms sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nGSSAPIKexAlgorithms gss-curve25519-sha256-,gss-group16-sha512-\n\nHostbasedAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-256\n\nPubkeyAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-256\n\n" > /etc/ssh/sshd_config.d/ssh-audit_hardening.conf
+    f_ssh_set_configuration
     service ssh restart
 }
 
 f_ssh_hard_s11() {
     #Specific hardening commands for Debian Bullseye (Debian 11)
     echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\nHostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,sk-ssh-ed25519-cert-v01@openssh.com,rsa-sha2-256,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com" > /etc/ssh/sshd_config.d/ssh-audit_hardening.conf
+    f_ssh_set_configuration
     service ssh restart
 }
 
 f_ssh_hard_s12() {
     #Specific hardening commands for Debian Buster (Debian 10)
     echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\nHostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-256,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com" >> $SSH_CONFIG_FILE
+    f_ssh_set_configuration
     service ssh restart
 }
 
 f_ssh_hard_s13() {
     #Specific hardening commands for Rocky Linux 9
     echo -e "# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org,gss-curve25519-sha256-,diffie-hellman-group16-sha512,gss-group16-sha512-,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\n\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-gcm@openssh.com,aes128-ctr\n\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\n\nHostKeyAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nRequiredRSASize 3072\n\nCASignatureAlgorithms sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nGSSAPIKexAlgorithms gss-curve25519-sha256-,gss-group16-sha512-\n\nHostbasedAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-256\n\nPubkeyAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\n" > /etc/crypto-policies/back-ends/opensshserver.config
+    f_ssh_set_configuration
     systemctl restart sshd
 }
 
@@ -273,12 +284,14 @@ f_ssh_hard_s14() {
     #Specific hardening commands for RHEL 8 Server / CentOS 8 Server
     cp /etc/crypto-policies/back-ends/opensshserver.config /etc/crypto-policies/back-ends/opensshserver.config.orig
     echo -e "CRYPTO_POLICY='-oCiphers=chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr -oMACs=hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com -oGSSAPIKexAlgorithms=gss-curve25519-sha256- -oKexAlgorithms=curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256 -oHostKeyAlgorithms=ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-256,rsa-sha2-512 -oPubkeyAcceptedKeyTypes=ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-256,rsa-sha2-512'" > /etc/crypto-policies/back-ends/opensshserver.config
+    f_ssh_set_configuration
     systemctl restart sshd.service
 }
 
 f_ssh_hard_s15() {
     #Specific hardening commands for RHEL 7 Server / CentOS 7 Server
     echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group18-sha512,diffie-hellman-group16-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com" >> $SSH_CONFIG_FILE
+    f_ssh_set_configuration
     systemctl restart sshd.service
 }
 
@@ -286,12 +299,14 @@ f_ssh_hard_s16() {
     #Specific hardening commands for pfSense 2.4
     sed -i.bak 's/^MACs \(.*\)$/\#MACs \1/g' $SSH_CONFIG_FILE
     echo "" | echo "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com" >> $SSH_CONFIG_FILE
+    f_ssh_set_configuration
     service sshd onerestart
 }
 
 f_ssh_hard_s17() {
     #Specific hardening commands for OpenBSD 6.2 Server
     echo -e "# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com" >> $SSH_CONFIG_FILE
+    f_ssh_set_configuration
     kill -HUP `cat /var/run/sshd.pid`
 }
 
@@ -377,9 +392,46 @@ Match Group ingot_registry
     Subsystem sftp none
 #END MATCH GROUP
 EOF
+    sed -i "/^Match User ironsync/,/\#END MATCH USER/d" $SSH_CONFIG_FILE
+    cat << EOF >> $SSH_CONFIG_FILE
+Match User ironsync
+    ForceCommand /bin/ironjump-sync.sh
+    PermitTTY no
+    AllowTcpForwarding no
+    GatewayPorts no
+    X11Forwarding no
+    PermitTunnel no
+    AuthenticationMethods publickey
+    PasswordAuthentication no
+    Subsystem sftp none
+#END MATCH USER
+EOF
     systemctl restart ssh
     systemctl daemon-reload
-    f_cron_configuration
+    #setup /bin/ironjump-sync.sh
+    cat <<EOF > /bin/ironjump-sync.sh
+#!/bin/bash
+ac_host_file="/home/ironjump/endpoints/chroot/\$ac_host/access_control"
+if [[ -z \$ac_host ]]; then
+    echo "Error: No hostname provided."
+    exit 1
+fi
+if [[ ! -f "/home/ironjump/endpoints/chroot/\$ac_host/access_control" ]]; then
+    echo "Error: File does not exist or permission denied."
+    exit 1
+fi
+cat "\$ac_host_file"
+EOF
+    chown root:ironsync /bin/ironjump-sync.sh
+    chmod 0750 /bin/ironjump-sync.sh
+    #Final Permissions Check
+    chmod 0755/home/ironjump
+    chmod 0750/home/ironjump/users
+    chmod 0750/home/ironjump/servers
+    chmod 0750/home/ironjump/endpoints
+    chown -R :ironsync /home/ironjump
+    echo "Building cron jobs."
+    f_cron_pass_rotation
     read -p "Setup Complete. Press [ENTER] to continue."
 }
 
@@ -467,14 +519,15 @@ f_os_identity() {
 f_make_setup() {
     # Check if make utility is installed. Required for AutoSSH.
     case "$PKG_MANAGER" in
-        "apt") sudo apt install -y make ;;
-        "yum") sudo yum install -y make ;;
-        "dnf") sudo dnf install -y make;;
-        "pacman") sudo pacman -Sy --noconfirm make ;;
-        "pkg") sudo pkg install -y make ;;
-        "pkg_add") sudo pkg_add make ;;
+        "apt") sudo apt install -y make gcc ;;
+        "yum") sudo yum install -y make gcc ;;
+        "dnf") sudo dnf install -y make gcc ;;
+        "pacman") sudo pacman -Sy --noconfirm make gcc ;;
+        "pkg") sudo pkg install -y make gcc ;;
+        "pkg_add") sudo pkg_add make gcc ;;
         *) echo "Package manager not recognized. Cannot install the make utility."; return 1 ;;
     esac
+}
 
 f_sshd_setup() {
     # Check if SSH client is installed
@@ -535,16 +588,54 @@ f_cron_setup() {
     echo "Cron setup complete!"
 }
 
-f_cron_configuration() {
+f_cron_pass_rotation() {
     f_cron_setup
-    echo "Building cron jobs."
-    cp ./ironjump_pass_rotation.sh /bin/
-#    echo "0 */$PASSWORD_ROTATION * * * root /bin/ironjump_pass_rotation.sh"
-    chmod 644 /bin/ironjump_pass_rotation.sh
-    echo -e "\r\n--------------------------------------------------------"
+    cat <<EOF > /bin/ironjump-pass-rotation.sh
+#!/bin/bash
+# Password rotation for IronJump Downstream Bastions, Endpoints, and SSH Users
+IRONJUMP_SSH_GROUP="ironjump_users"
+IRONJUMP_SRV_GROUP="ironjump_servers"
+IRONJUMP_END_GROUP="ironjump_enpoints"
+PASSWORD_LENGTH="64"
+
+
+### Password Length and Rotation
+### ============================
+## NOTE: IronJump Servers (Upstream or Downstream): devices [endpoints/ingots], servers, and users account passwords are not used. Admins should
+#        use Password/Passphrase-protected SSH keys for authentication. This is due to the /bin/false shell. IronJump accounts are never
+#        used for management of the bastion servers. Furthermore, the endpoints that connect to an IronJump bastion are treated similarly.
+#        This is to prevent elevating privileges or connecting to other hosts in the IronJump ecosystem. Endpoints and Downstream IronJump
+#        bastions are connected without password protected keys. Therefore, it is vital to ensure that someone cannot guess a
+#        password for the account in use. By rotating the passwords every 8 hours, the use of passwords is efectively disabled.
+
+## NOTE: It is not recommended to change these settings unless there is a good reason. There is a passcode generator function in the
+#        IronJump menu under Endpoint Management to create or reset a password of a new or existing user directly on the host.
+
+## NOTE: To change the rotation period. Directly edit the cron job from an elevated account.
+
+### -----------------------------
+
+ironjump_change_password() {
+    account=\$1
+    NEW_PASSWORD=\$(tr -dc 'A-Za-z0-9\~\!\@\#\$\%\^\&\*\(\)\_\+\-\=\[\]\{\}\;\:\<\>\,\.\?\/' < /dev/urandom |head -c \$PASSWORD_LENGTH)
+    echo "\$account:\$NEW_PASSWORD" | chpasswd
+    unset NEW_PASSWORD
 }
 
-## MENU FUNCTIONS (In Order of Appearance)
+for user in \$(getent group \$IRONJUMP_SSH_GROUP |awk -F: '{print \$4}' | tr ',' ' '); do ironjump_change_password \$user; done
+for server in \$(getent group \$IRONJUMP_SRV_GROUP |awk -F: '{print \$4}' | tr ',' ' '); do ironjump_change_password \$server; done
+for endpoint in \$(getent group \$IRONJUMP_END_GROUP |awk -F: '{print \$4}' | tr ',' ' '); do ironjump_change_password \$endpoint; done
+ironjump_change_password ironsync
+EOF
+    sleep 2
+    chown root:root /bin/ironjump-pass-rotation.sh
+    chmod 0700 /bin/ironjump-pass-rotation.sh
+    (crontab -l 2>/dev/null; echo "0 0,8,16 * * * /bin/ironjump-pass_rotation.sh") | crontab -
+    echo -e "\r\nWARNING! Password rotation for all IronJump accounts is recommended and enabled by default. To disable this service, manually edit the entry [crontab -e].\r\n\r\n\tDO NOT - Add the 'root' account to any IronJump Group.\n\tDO NOT - Add a 'local' account to any IronJump Group.\n\tYou WILL CAUSE LOCKOUT and BREAK your system."
+    echo "=========================="
+    read -p "Press [ENTER] to continue." continue
+}
+
 #deployment_menu
 deploy_secondary() {
     #f_ssh_hard_check
@@ -583,155 +674,208 @@ harden_ssh_service() {
     f_ssh_hard_os_selection
 }
 
-#usr_acct_mgmt_menu
 usr_mgmt_list() {
-#    read -p "Function Good" ; usr_acct_mgmt_menu
-    clear
-    echo -e "Account Management"
-    nav_top
-    echo -e "1) Users: $IRONJUMP_SSH_GROUP\n2) Servers: $IRONJUMP_SRV_GROUP\n3) Endpoints: $IRONJUMP_END_GROUP"
-    nav_foot
-    case $choice in
-        1) echo -e "\r" ; getent group $IRONJUMP_SSH_GROUP |awk -F: '{print $4}' |tr ',' \\n ; echo -e "\r\n--------------------------------------------------------" ; read -p "Press [ENTER] to continue." ; usr_mgmt_list ;;
-        2) echo -e "\r" ; getent group $IRONJUMP_SRV_GROUP |awk -F: '{print $4}' |tr ',' \\n ; echo -e "\r\n--------------------------------------------------------" ; read -p "Press [ENTER] to continue." ; usr_mgmt_list ;;
-        3) echo -e "\r" ; getent group $IRONJUMP_END_GROUP |awk -F: '{print $4}' |tr ',' \\n ; echo -e "\r\n--------------------------------------------------------" ; read -p "Press [ENTER] to continue." ; usr_mgmt_list ;;
-        R|r) ast_reboot ;;
-        P|p) usr_acct_mgmt_menu ;;
-        Q|q) exit 0 ;;
-        *) invalid_choice ;usr_acct_mgmt_menu ;;
-    esac
+    cat /etc/passwd |sort |while IFS=: read -r username password uid gid comment home shell; do if [[ $(echo $home |grep "/home/ironjump/users" |wc -l) -eq 1 ]]; then u_stat=$(passwd -S $username |awk '{print $2}'); if [[ $(echo $u_stat) == "P" ]]; then echo -e "$username :: Pubic Key - $(cat $home/.ssh/authorized_keys) :: (Enabled)"; else echo "$username :: Public Key - $(cat $home/.ssh/authorized_keys) :: (Disabled)"; fi; fi; done |more
+    read -p "Press [ENTER] to return to the menu." continue
+    root_server_user_acct_mgmt_menu
 }
 
 usr_mgmt_new() {
     clear
-    echo "Create/Add SSH User"
-    nav_top
-    read -p "Is this for a (B)astion or (E)ndpoint host? " choice
-    case "$choice" in 
-        B|b) echo "Bastion User Selected" ; usr_type="bastion" ;;
-        E|e) echo "Endpoint User Selected" ; usr_type="endpoint" ;;
-        *) invalid_choice ; usr_mgmt_new ;;
-    esac
-    read -p "What is the username? " usr_new_set_name
-    read -p "What is the user (REAL) name, nickname, or ID? " usr_new_set_comment
-    read -p "Enter the  user's SSH Public Key? " usr_new_set_pubkey
-    if [[ ! "$usr_new_set_pubkey" =~ ^ssh-ed25519 ]] &&	 [[ ! "$usr_new_set_pubkey" =~ ^ssh-rsa ]]; then
+    echo "IronJump SSH Management - Create/Add SSH User"
+    nav_top_bar
+    echo -e "\nNew User Details\n----------------\n"
+    read -p "   --> Username:   " usr_new_set_name
+    if [[ ! -z $(cat /etc/passwd |grep $usr_new_set_name) ]]; then echo -e "\nUsername already exists. Please try again."; sleep 2; usr_mgmt_new; fi
+    read -p "   --> Real Name or Nickname:  " usr_new_set_comment
+    read -p "   --> SSH Pubkey {key_type key}: " usr_new_set_pubkey
+    if [[ ! "$usr_new_set_pubkey" =~ ^ssh-ed25519 ]] &&	[[ ! "$usr_new_set_pubkey" =~ ^ssh-rsa ]]; then
         echo "SSH Pubkey must be ed25519 (recommended) or RSA. Aborting user creation."
         echo -e "\r\n--------------------------------------------------------"
-        read -p "Press [ENTER] to continue."
-        usr_acct_mgmt_menu
+        read -p "Press [ENTER] to continue. Returning to User Account Menu" continue
+        root_server_user_acct_mgmt_menu
+    else
+        key_type=$(echo $usr_new_set_pubkey | awk '{print $1}')
+        key=$(echo $usr_new_set_pubkey | awk '{print $2}')
+        ssh_key=$(echo $key_type $key $usr_new_set_name)
     fi
-    echo -e "\r\nA new $usr_type user account will be created using the following: \r\n\tUsername: $usr_new_set_name \r\n\tIdentity: $usr_new_set_comment \r\n\tPublic SSH Key: $usr_new_set_pubkey \r\n\tEpiration: None"
+    echo -e "\r\nA new $usr_type user account will be created using the following: \r\n\tUsername: $usr_new_set_name \r\n\tIdentity: $usr_new_set_comment \r\n\tPublic SSH Key: $ssh_key \r\n\tExpiration: None"
     echo -e "\r\n--------------------------------------------------------"
     read -p "Press [C] to confirm or [A] to abort: " choice
     case "$choice" in
-        A|a) usr_acct_mgmt_menu ;;
+        A|a) root_server_user_acct_mgmt_menu ;;
         C|c)
-            usr_new_set_homedir="$IRONJUMP_CHROOT_ENV/users/$usr_new_set_name"
+            usr_new_set_homedir="$IRONJUMP_CHROOT_ENV/users/chroot/$usr_new_set_name"
             usr_new_set_sshdir="$usr_new_set_homedir/.ssh"
             usr_new_set_authorized_keys="$usr_new_set_sshdir/authorized_keys"
-            useradd -U -m -s $(which nologin) -d $usr_new_set_homedir -c "$usr_new_set_id" -G $IRONJUMP_SSH_GROUP $usr_new_set_name
+            useradd -U -m -s $(which nologin) -d $usr_new_set_homedir -c "$usr_new_set_comment" -G $IRONJUMP_SSH_GROUP $usr_new_set_name
             mkdir -p $usr_new_set_sshdir
-            echo "$usr_new_set_pubkey" > $usr_new_set_authorized_keys
+            echo $ssh_key > $usr_new_set_authorized_keys
             chown -R $usr_new_set_name:$usr_new_set_name $usr_new_set_sshdir
             chmod 700 "$usr_new_set_sshdir"
             chmod 600 "$usr_new_set_authorized_keys"
             ;;
-        *) invalid_choice; usr_acct_mgmt_new ;;
+        *) invalid_choice; usr_mgmt_new ;;
     esac
-    echo "New user account for $usr_new_set_name created for this $usr_type."
+    NEW_PASSWORD=$(tr -dc 'A-Za-z0-9\~\!\@\#\$\%\^\&\*\(\)\_\+\-\=\[\]\{\}\;\:\<\>\,\.\?\/' < /dev/urandom |head -c 64)
+    echo $usr_new_set_name:$NEW_PASSWORD | chpasswd
+    unset NEW_PASSWORD
+    echo "New user account for $usr_new_set_name created."
     echo -e "\r\n--------------------------------------------------------"
     read -p "Press [ENTER] to continue."
-    usr_acct_mgmt_menu
+    root_server_user_acct_mgmt_menu
 }
 
 usr_mgmt_enable() {
-#    read -p "Function Good" ; usr_acct_mgmt_menu
     clear
-    echo "User Enable Function"
-    nav_top
-    read -p "Enter a username to enable: " usr_set_enable
-    if [[ $(cat /etc/passwd |grep $usr_set_enable |wc -l) -lt 1 ]]; then
-        invalid_choice ; usr_acct_mgmt_menu
-    else
-        usermod -U $usr_set_enable
-        echo "User $usr_set_enable is unlocked."
+    echo "IronJump SSH Management - Enable User Account Wizard"
+    nav_top_bar
+    echo -e "\n"
+    read -p "Enter a username to enable: " usr_set_enable_name
+    if [[ $(cat /etc/passwd |grep $usr_set_enable_name |wc -l) -eq 0 ]]; then
+        read -p "Username not found. Press [Enter] to return to the Account Management Menu." continue
+        root_server_user_acct_mgmt_menu
+    elif [[ ! -d /home/ironjump/users/chroot/$usr_set_enable_name ]]; then
+        read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to Account Management Menu." continue
+        root_server_user_acct_mgmt_menu
+    fi
+    read -p "Are you sure you want to enable $usr_set_enable_name? Type [CONFIRM]: " choice
+    if [[ $(echo $choice | tr [[:upper:]] [[:lower:]]) == "confirm" ]]; then
+        usermod -U $usr_set_enable_name &>/dev/null
+        echo "User $usr_set_enable_name is now enabled!"
         echo -e "\r\n--------------------------------------------------------"
-        read -p "Press [ENTER] to continue."
-        usr_acct_mgmt_menu
+        read -p "Press [ENTER] to continue." continue
+        root_server_user_acct_mgmt_menu
+    else
+        read -p "Confirmation not given. Press [ENTER] to return to the User Account Menu." continue
+        root_server_user_acct_mgmt_menu
     fi
 }
 
 usr_mgmt_disable() {
-#    read -p "Function Good" ; usr_acct_mgmt_menu
     clear
-    echo "User Disable Function"
-    nav_top
-    read -p "Enter a username to disable: " usr_set_disable
-    if [[ $(cat /etc/passwd |grep $usr_set_disable |wc -l) -lt 1 ]]; then
-        invalid_choice ; usr_acct_mgmt_menu
-    else
-        usermod -L $usr_set_disable
-        pkill -u $usr_set_disable
-        echo "User $usr_set_disable is locked."
+    echo "IronJump SSH Management - Disable User Account Wizard"
+    nav_top_bar
+    echo -e "\n"
+    read -p "Enter a username to disable: " usr_set_disable_name
+    if [[ $(cat /etc/passwd |grep $usr_set_disable_name |wc -l) -eq 0 ]]; then
+        read -p "Username not found. Press [Enter] to return to the Account Management Menu." continue
+        root_server_user_acct_mgmt_menu
+    elif [[ ! -d /home/ironjump/users/chroot/$usr_set_disable_name ]]; then
+        read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to Account Management Menu." continue
+        root_server_user_acct_mgmt_menu
+    fi
+    read -p "Are you sure you want to disable $usr_set_disable_name? Type [CONFIRM]: " choice
+    if [[ $(echo $choice | tr [[:upper:]] [[:lower:]]) == "confirm" ]]; then
+        usermod -L $usr_set_disable_name &>/dev/null
+        pkill -u $usr_set_disable_name
+        echo "User $usr_set_disable_name is now disabled!"
         echo -e "\r\n--------------------------------------------------------"
-        read -p "Press [ENTER] to continue."
-        usr_acct_mgmt_menu
+        read -p "Press [ENTER] to continue." continue
+        root_server_user_acct_mgmt_menu
+    else
+        read -p "Confirmation not given. Press [ENTER] to return to the User Account Menu." continue
+        root_server_user_acct_mgmt_menu
     fi
 }
 
 usr_mgmt_delete() {
-#    read -p "Function Good" ; usr_acct_mgmt_menu
     clear
-    echo "User Delete Function"
-    nav_top
-    read -p "Enter a username to delete: " usr_set_delete
-    if [[ $(cat /etc/passwd |grep $usr_set_delete |wc -l) -lt 1 ]]; then
-        invalid_choice ; usr_acct_mgmt_menu
+    echo "IronJump SSH Management - Delete User Account Wizard"
+    nav_top_bar
+    echo -e "\n"
+    read -p "Enter a username to delete: " usr_set_delete_name
+    if [[ $(cat /etc/passwd |grep $usr_set_delete_name |wc -l) -eq 0 ]]; then
+        read -p "Username not found. Press [Enter] to return to the Account Management Menu." continue
+        root_server_user_acct_mgmt_menu
+    elif [[ ! -d /home/ironjump/users/chroot/$usr_set_delete_name ]]; then
+        read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to Account Management Menu." continue
+        root_server_user_acct_mgmt_menu
+    fi
+    read -p "Are you sure you want to delete $usr_set_delete_name? Type [CONFIRM]: " choice
+    if [[ $(echo $choice | tr [[:upper:]] [[:lower:]]) == "confirm" ]]; then
+        userdel -r $usr_set_delete_name &>/dev/null
+        pkill -u $usr_set_delete_name
+        echo "User $usr_set_delete_name has been deleted!"
+        echo -e "\r\n--------------------------------------------------------"
+        read -p "Press [ENTER] to continue." continue
+        root_server_user_acct_mgmt_menu
     else
-        read -p "Are you sure you want to delete $usr_set_delete? Type [CONFIRM]: " choice
-        if [[ $(echo $choice | tr [[:upper:]] [[:lower:]]) == "confirm" ]]; then
-            #userdel -r $usr_set_delete
-            #pkill -u $usr_set_delete
-            echo "User $usr_set_delete is no more!"
-            echo -e "\r\n--------------------------------------------------------"
-            read -p "Press [ENTER] to continue."
-            usr_acct_mgmt_menu
-        else
-            read -p "Confirmation not given. Returning to User Account Menu..."
-            usr_acct_mgmt_menu
-       fi
+        read -p "Confirmation not given. Press [ENTER] to return to the User Account Menu." continue
+        root_server_user_acct_mgmt_menu
     fi
 }
 
 usr_mgmt_mod_pubkey() {
-    read -p "Function Good" ; usr_acct_mgmt_menu
+    clear
+    echo "IronJump SSH Management - User Account Public Key Update Wizard"
+    nav_top_bar
+    echo -e "\n"
+    read -p "Enter a username to modify their SSH Public Key: " usr_set_update_pubkey_name
+    if [[ $(cat /etc/passwd |grep $usr_set_update_pubkey_name |wc -l) -eq 0 ]]; then
+        read -p "Username not found. Press [Enter] to return to the Account Management Menu." continue
+        root_server_user_acct_mgmt_menu
+    elif [[ ! -d /home/ironjump/users/chroot/$usr_set_update_pubkey_name ]]; then
+        read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to Account Management Menu." continue
+        root_server_user_acct_mgmt_menu
+    else
+        read -p "   --> New SSH Pubkey {key_type key}: " usr_set_update_pubkey_key
+        if [[ ! "$usr_set_update_pubkey_key" =~ ^ssh-ed25519 ]] && [[ ! "$usr_set_update_pubkey_key" =~ ^ssh-rsa ]]; then
+            echo "SSH Pubkey must be ed25519 (recommended) or RSA. Aborting user creation."
+            echo -e "\r\n--------------------------------------------------------"
+            read -p "Press [ENTER] to continue. Returning to User Account Menu" continue
+            root_server_user_acct_mgmt_menu
+        else
+            key_type=$(echo $usr_set_update_pubkey_key | awk '{print $1}')
+            key=$(echo $usr_set_update_pubkey_key | awk '{print $2}')
+            ssh_key=$(echo $key_type $key $usr_set_update_pubkey_name)
+        fi
+    echo -e "\r\nUpdateing SSH Public Key for: \r\n\tUsername: $usr_new_set_name \r\n\tPublic SSH Key: $ssh_key"
+    echo -e "\r\n--------------------------------------------------------"
+    read -p "Press [C] to confirm or [A] to abort: " choice
+    case "$choice" in
+        A|a) root_server_user_acct_mgmt_menu ;;
+        C|c)
+            echo $ssh_key > /home/ironjump/users/chroot/$usr_set_update_pubkey_name/.ssh/authorized_keys
+            chown $usr_set_update_pubkey_name:$usr_set_update_pubkey_name /home/ironjump/users/chroot/$usr_set_update_pubkey_name/.ssh/authorized_keys
+            chmod 0600 /home/ironjump/users/chroot/$usr_set_update_pubkey_name/.ssh/authorized_keys
+            access_control_path="/home/ironjump/endpoints/chroot/*/access_control"
+            sed -i -E "s|^($usr_set_update_pubkey_name):[^:]+ ([^:]+):|\1:$ssh_key:|" $access_control_path
+            ;;
+        *) invalid_choice; root_server_acct_mgmt_menu ;;
+    esac
+    fi
+    root_server_user_acct_mgmt_menu
 }
 
 usr_mgmt_set_expire() {
-#    read -p "Function Good" ; usr_acct_mgmt_menu
-    clear
-    echo "User Epiration Function"
-    nav_top
-    read -p "Enter a username to expire: " usr_set_expire_name
-    if [[ $(cat /etc/passwd |grep $usr_set_expire_name |wc -l) -lt 1 ]]; then
-        invalid_choice ; usr_acct_mgmt_menu
+    if [[ $(cat /etc/passwd |grep $usr_set_expire_name |wc -l) -eq 0 ]]; then
+        read -p "Username not found. Press [Enter] to return to the Account Management Menu." continue
+        root_server_user_acct_mgmt_menu
+    fi
+    if [[ ! -d /home/ironjump/users/chroot/$usr_set_expire_name ]]; then
+        read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to Account Management Menu." continue
+        root_server_user_acct_mgmt_menu
     else
         echo -e "To set an expiration, specify the number of days as:\r\n\t   -1: Never Expire, or\r\n\t1-999: Number of days from now\r\n"
         read -p "In how many days from today would you like the account to expire? " usr_set_expire_days
+        usr_set_expire=$(echo $usr_set_expire_days |tr -d "+")
         if [[ "$usr_set_expire_days" == "-1" ]]; then
             chage -E -1 $usr_set_expire_name
             echo "User $usr_set_expire_name is set to never expire."
             echo -e "\r\n--------------------------------------------------------"
-            read -p "Press [ENTER] to continue."
-            usr_acct_mgmt_menu
-        fi
-        if [[ "$usr_set_expire_days" =~ ^[0-9]+$ ]] && [[ "$usr_set_expire_days" -gt 0 ]]; then
-            chage -E $usr_set_expire_days $usr_set_expire_name
+            read -p "Press [ENTER] to continue." continue
+            root_server_user_acct_mgmt_menu
+        elif [[ "$usr_set_expire_days" =~ ^[0-9]+$ ]] && [[ "$usr_set_expire_days" -gt 0 ]]; then
+            chage -E $(date -d "+$usr_set_expire_days days" +%Y-%m-%d) $usr_set_expire_name
             echo "User $usr_set_expire_name account will expire in $usr_set_expire_days days."
             echo -e "\r\n--------------------------------------------------------"
-            read -p "Press [ENTER] to continue."
-            usr_acct_mgmt_menu
+            read -p "Press [ENTER] to continue." continue
+            root_server_user_acct_mgmt_menu
+        else
+            echo "Invalid number of days specified. Only the number 1-999 or -1 can be used."
+            read -p "Press [ENTER] to try again." continue
+            usr_mgmt_set_expire
         fi
     fi
 }
@@ -802,17 +946,6 @@ sudo -n gpasswd -d \$USER ingot_registry
 date > ~/registration_complete
 rm -- "\$self_destruct"
 EOF
-#    echo '#!/bin/bash' >$dev_new_set_homedir/ingot-registration.sh
-#    echo 'self_destruct="$0"' >>$dev_new_set_homedir/ingot-registration.sh
-#    echo "cat ~/ingot-keys" >>$dev_new_set_homedir/ingot-registration.sh
-#    echo "sleep 1" >>$dev_new_set_homedir/ingot-registration.sh
-#    echo "rm -f ~/ingot-keys" >>$dev_new_set_homedir/ingot-registration.sh
-#    echo "sleep 1" >>$dev_new_set_homedir/ingot-registration.sh
-#    echo 'sudo gpasswd -a $USER ironjump_endpoints' >>$dev_new_set_homedir/ingot-registration.sh
-#    echo 'sudo gpasswd -d $USER ingot_registry' >>$dev_new_set_homedir/ingot-registration.sh
-#    echo 'sudo chsh -s /usr/sbin/nologin $USER' >>$dev_new_set_homedir/ingot-registration.sh
-#    echo "date >~/registration_complete" >>$dev_new_set_homedir/ingot-registration.sh
-#    echo 'rm -- "$self_destruct" >>$dev_new_set_homedir/ingot-registration.sh
     chmod +x $dev_new_set_homedir/ingot-registration.sh
     echo "ironjump_key="\"$(cat $dev_new_set_homedir/ironjump_key)\" >>$dev_new_set_homedir/ingot-keys
     echo "ironsync_key="\"$(cat $dev_new_set_homedir/ironsync_key)\" >>$dev_new_set_homedir/ingot-keys
@@ -823,7 +956,8 @@ EOF
     chown -R $ep_account_name:$ep_account_name $dev_new_set_homedir
     chmod 700 "$dev_new_set_sshdir"
     chmod 600 "$dev_new_set_authorized_keys"
-    chown root:ironsync $dev_new_set_homedir/access_control
+    chown -R :ironsync $dev_new_set_homedir
+    chown root:ironsync $dev_new_set_homedir/access_contorl
     chmod 0740 $dev_new_set_homedir/access_control
     #Display Username and Password Instructions
     clear
@@ -859,9 +993,6 @@ dev_mgmt_set_expire() {
 
 #ep_mgmt_menu
 ep_connect() {
-    f_sshd_setup
-    f_make_setup
-    f_cron_setup
     clear
     echo "IronJump SSH Management : Endpoint Registration Wizard"
     nav_top_bar
@@ -877,13 +1008,21 @@ ep_connect() {
         Yes|yes|Y|y) sleep 1 ;;
         *) invalid_choice ; ep_mgmt_menu ;;
     esac
+    f_sshd_setup
+    f_make_setup
+    f_cron_setup
     clear
     echo "IronJump SSH Management : Endpoint Registration Wizard"
     nav_top_bar
-    echo -e "INFO: This endpoint will attempt registration using\nthe following information:\n    IronJump SSH Server:\t$ironjump_srv_ip\n    Username:\t\t$ironjump_ep_name\r\n"
+    echo -e "INFO: This endpoint will attempt registration using\nthe following information:\n    IronJump Server:\t$ironjump_srv_ip\n    Username:\t\t$ironjump_ep_name\r\n"
     nav_breaker_bar
     echo -e "When prompted, please use the access token for SSH.\n"
     read -p "Press [ENTER] to continue." continue
+    if grep -q "^ironjump_srv_ip=" ./CONFIG.FILE; then
+        sed -i "s|^ironjump_srv_ip=.*|ironjump_srv_ip=$ironjump_srv_ip|" ./CONFIG.FILE
+    else
+        sed -i "4i ironjump_srv_ip=$ironjump_srv_ip" ./CONFIG.FILE
+    fi
     clear
     if [[ ! -d /root/.ssh ]]; then mkdir /root/.ssh; chmod 0700 /root/.ssh; fi
     ssh $ironjump_ep_name@$ironjump_srv_ip |tee /root/ingot-keys
@@ -898,11 +1037,91 @@ ep_connect() {
     rm -f /root/ingot-keys
     chmod 0600 /root/.ssh/iron*_key
     cd autossh
-    .configure
+    ./configure
     make
     make install
-    read -p "Complete. Press [ENTER] to continue." continue
+    cd ../
+    if [[ -f /bin/ironjump-connect.sh ]]; then rm -f /bin/ironjump-connect.sh; fi
+    cat <<EOF > /bin/ironjump-connect.sh
+#!/bin/bash
+autossh -M 0 -f -o "StrictHostKeyChecking no" -N -i /root/.ssh/ironjump_key -R $(cat /etc/hostname |cut -d '-' -f 2):localhost:22 $(cat /etc/hostname)@$ironjump_srv_ip
+EOF
+    if [[ -f /bin/ironjump-sync-.sh ]]; then rm -f /bin/ironjump-sync.sh; fi
+    cat <<EOF > /bin/ironjump-sync.sh
+#!/bin/bash
+ac_host=\$(cat /etc/hostname) ssh -i /root/.ssh/ironsync_key -o "StrictHostKeyChecking no" -o "SendEnv ac_host" ironsync@$ironjump_srv_ip > /root/.ssh/access_control
+sleep 5
+echo -e "\r\nLast Update: \$(date)" >> /root/.ssh/access_control
+
+#Process access control file after synchronization
+ACCESS_FILE="/root/.ssh/access_control"
+SUDOERS_FILE="/etc/sudoers.d/ironjump_users"
+touch "\$SUDOERS_FILE"
+chmod 440 "\$SUDOERS_FILE"
+
+while IFS=":" read -r username ssh_key status; do
+    [[ -z "\$username" || "\$username" == "Last Update"* || "\$username" == "root" ]] && continue
+    user_exists=\$(id "\$username" &>/dev/null && echo "yes" || echo "no")
+    case "\$status" in
+        "Allowed")
+            if [[ "\$user_exists" == "yes" ]]; then
+                usermod -U "\$username"
+                grep -q "^\$username " "\$SUDOERS_FILE" || echo "\$username ALL=(ALL) NOPASSWD:ALL" >> "\$SUDOERS_FILE"
+                echo "\$ssh_key" >> "/home/\$username/.ssh/authorized_keys"
+                chmod 600 "/home/\$username/.ssh/authorized_keys"
+                chown -R "\$username:\$username" "/home/\$username/.ssh"
+            elif [[ "\$user_exists" == "no" ]]; then
+                useradd -m -s /bin/bash "\$username"
+                mkdir -p "/home/\$username/.ssh"
+                chmod 700 "/home/\$username/.ssh"
+                touch "/home/\$username/.ssh/authorized_keys"
+                chmod 600 "/home/\$username/.ssh/authorized_keys"
+                echo "\$ssh_key" > "/home/\$username/.ssh/authorized_keys"
+                chown -R "\$username:\$username" "/home/\$username/.ssh"
+                echo "\$username ALL=(ALL) NOPASSWD:ALL" >> "\$SUDOERS_FILE"
+                NEW_PASSWORD=\$(tr -dc 'A-Za-z0-9\~\!\@\#\$\%\^\&\*\(\)\_\+\-\=\[\]\{\}\;\:\<\>\,\.\?\/' < /dev/urandom |head -c 64)
+                echo "\$username:\$NEW_PASSWORD" | chpasswd
+                unset NEW_PASSWORD
+            fi
+            ;;
+        "Revoked"|"Deleted")
+            if [[ "\$user_exists" == "yes" ]]; then
+                user_locked=\$(passwd -S "\$username" | grep -q " L " && echo "yes" || echo "no")
+                if [[ "\$user_locked" == "no" ]]; then
+                    usermod -L "\$username"
+                    pkill -u "\$username"
+                    echo "" > "/home/\$username/.ssh/authorized_keys"
+                    chmod 600 "/home/\$username/.ssh/authorized_keys"
+                    sed -i "/^\$username /d" "\$SUDOERS_FILE"
+                fi
+            fi
+            ;;
+    esac
+done < "\$ACCESS_FILE"
+EOF
+    chmod 0700 /bin/ironjump-*.sh
+    chown root:root /bin/ironjump-*.sh
+    sleep 3; echo "Requesting Access Control List" ; /bin/ironjump-sync.sh
+    (crontab -l 2>/dev/null; echo "@reboot sleep 120 && pgrep autossh > /dev/null || /bin/ironjump-connect.sh") | crontab -
+    (crontab -l 2>/dev/null; echo "*/10 * * * * pgrep autossh > /dev/null || /bin/ironjump-connect.sh") | crontab -
+    (crontab -l 2>/dev/null; echo "@reboot /bin/ironjump-sync.sh") | crontab -
+    (crontab -l 2>/dev/null; echo "*/5 * * * * /bin/ironjump-sync.sh") | crontab -
+
+    read -p "The endpoint will reboot in 15 seconds. Press [ENTER] to continue." continue
+    sleep 15; shutdown -r now
     ep_mgmt_menu
+}
+
+ep_force_sync(){
+    if [[ ! -f /bin/ironjump-sync.sh ]]; then
+        echo "This endpoint has has not been previously connected to an IronJump server."
+    else
+        echo -e "\nSyncing permissions with IronJump server at $ironjump_srv_ip."
+        /bin/ironjump-sync.sh
+    fi
+    nav_breaker_bar
+    read -p "Press [ENTER] to return to Endpoint Management Menu." continue
+    endpoint_dev_mgmt_menu
 }
 
 ep_add_local_usr() {
@@ -944,6 +1163,94 @@ ep_smelt_device() {
     #THIS IS COMPLETE, BUT FOR DEVELOPMENT IS NOT INCLUDED ON THIS SYSTEM'S CODE.
 }
 
+#Access Control Management
+assignments_add_by_user() {
+    clear
+    echo -e "Access Control Management - Assign a User - Wizard"
+    nav_top_bar
+    read -p "Please specifiy a user account: " assign_user
+    if ! $(id $assign_user &>/dev/null); then echo "User not found. Returning to Access Control Menu."; sleep 1; access_control_assign_user; fi
+    if [[ ! -d /home/ironjump/users/chroot/$assign_user ]]; then echo -e "\nLocal Account Detected!\nUser account is eligable for Assignment.\n\nReturning to Access Control Menu."; sleep 2; access_control_assign_user; fi
+    echo -e "\nCurrent User Assignments: $assign_user\n------------------------\n"
+    grep -H $assign_user /home/ironjump/endpoints/chroot/*/access_control |awk -F'[:,/]' '{print "   --> " $(NF-4) ": " $NF}'
+    read -p "What endpoint should $assign_user be allowed access: " assign_endpoint
+    if ! $(id $assign_endpoint &>/dev/null); then echo "Endpoint Account not found. Returning to Access Control Menu."; sleep 1; access_control_assign_user; fi
+    if [[ ! -d /home/ironjump/endpoints/chroot/$assign_endpoint ]]; then echo -e "\nEndpoint exists, but no home directory found.\n\nReturning to Access Control Menu."; sleep 1; access_control_assign_user; fi
+    sed -i "/$assign_user/d" /home/ironjump/endpoints/chroot/$assign_endpoint/access_control
+    echo -e "$assign_user:$(cat /home/ironjump/users/chroot/$assign_user/.ssh/authorized_keys):Allowed" >>/home/ironjump/endpoints/chroot/$assign_endpoint/access_control
+    echo -e "\nUser $assign_user Allowed Access to $assign_endpoint.\nChanges may take up to 5 minutes."
+    read -p "Press [ENTER] to return to Access Control Menu" continue
+    access_control_mgmt_menu
+}
+
+assignments_add_by_endpoint() {
+    clear
+    echo -e "Access Control Management - Assign a User - Wizard"
+    nav_top_bar
+    read -p "Please specifiy an endpoint: " assign_endpoint
+    if ! $(id $assign_endpoint &>/dev/null); then echo "Endpoint account not found. Returning to Access Control Menu."; sleep 1; access_control_assign_user; fi
+    if [[ ! -d /home/ironjump/endpoints/chroot/$assign_endpoint ]]; then echo -e "\nEndpoint exists, but no home director found.\n\nReturning to Access Control Menu."; sleep 2; access_control_assign_user; fi
+    echo -e "\nCurrent User Assignments: $assign_endpoint\n------------------------\n"
+    cat /home/ironjump/endpoints/chroot/$assign_endpoint/access_control |awk -F'[:,/]' '{print "    --> " $1 ": " $NF}'
+    read -p "What what user should be allowed access to $assign_endpoint: " assign_user
+    if ! $(id $assign_user &>/dev/null); then echo "User Account not found. Returning to Access Control Menu."; sleep 1; access_control_assign_user; fi
+    if [[ ! -d /home/ironjump/users/chroot/$assign_user ]]; then echo -e "\nLocal Account Detected!\nUser account is eligable for Assignment.\n\nReturning to Access Control Menu."; sleep 2; access_control_assign_user; fi
+    sed -i "/$assign_user/d" /home/ironjump/endpoints/chroot/$assign_endpoint/access_control
+    echo -e "$assign_user:$(cat /home/ironjump/users/chroot/$assign_user/.ssh/authorized_keys):Allowed" >>/home/ironjump/endpoints/chroot/$assign_endpoint/access_control
+    echo -e "\nUser $assign_user Allowed Access to $assign_endpoint.\nChanges may take up to 5 minutes."
+    read -p "Press [ENTER] to return to Access Control Menu" continue
+    access_control_mgmt_menu
+}
+
+assignments_revoke_by_user() {
+    clear
+    echo -e "Access Control Management - Revoke a User - Wizard"
+    nav_top_bar
+    read -p "Please specifiy a user account: " assign_user
+    if ! $(id $assign_user &>/dev/null); then echo "User not found. Returning to Access Control Menu."; sleep 1; access_control_revoke_user; fi
+    if [[ ! -d /home/ironjump/users/chroot/$assign_user ]]; then echo -e "\nLocal Account Detected!\nUser account is eligable for Assignment.\n\nReturning to Access Control Menu."; sleep 2; access_control_revoke_user; fi
+    echo -e "\nCurrent User Assignments: $assign_user\n------------------------\n"
+    grep -H $assign_user /home/ironjump/endpoints/chroot/*/access_control |awk -F'[:,/]' '{print "   --> " $(NF-4) ": " $NF}'
+    read -p "On what endpoint should $assign_user be revoked: " assign_endpoint
+    if ! $(id $assign_endpoint &>/dev/null); then echo "Endpoint Account not found. Returning to Access Control Menu."; sleep 1; access_control_revoke_user; fi
+    if [[ ! -d /home/ironjump/endpoints/chroot/$assign_endpoint ]]; then echo -e "\nEndpoint exists, but no home directory found.\n\nReturning to Access Control Menu."; sleep 1; access_control_revoke_user; fi
+    sed -i "/$assign_user/d" /home/ironjump/endpoints/chroot/$assign_endpoint/access_control
+    echo -e "$assign_user:$(cat /home/ironjump/users/chroot/$assign_user/.ssh/authorized_keys):Revoked" >>/home/ironjump/endpoints/chroot/$assign_endpoint/access_control
+    echo -e "\nRevoked User: $assign_user on $assign_endpoint.\nChanges may take up to 5 minutes."
+    read -p "Press [ENTER] to return to Access Control Menu" continue
+    access_control_mgmt_menu
+}
+
+assignments_revoke_by_endpoint() {
+    clear
+    echo -e "Access Control Management - Revoke a User - Wizard"
+    nav_top_bar
+    read -p "Please specifiy an endpoint: " assign_endpoint
+    if ! $(id $assign_endpoint &>/dev/null); then echo "Endpoint account not found. Returning to Access Control Menu."; sleep 1; access_control_revoke_user; fi
+    if [[ ! -d /home/ironjump/endpoints/chroot/$assign_endpoint ]]; then echo -e "\nEndpoint exists, but no home director found.\n\nReturning to Access Control Menu."; sleep 2; access_control_revoke_user; fi
+    echo -e "\nCurrent User Assignments: $assign_endpoint\n------------------------\n"
+    cat /home/ironjump/endpoints/chroot/$assign_endpoint/access_control |awk -F'[:,/]' '{print "    --> " $1 ": " $NF}'
+    read -p "What what user should have access revoked from $assign_endpoint: " assign_user
+    if ! $(id $assign_user &>/dev/null); then echo "User Account not found. Returning to Access Control Menu."; sleep 1; access_control_revoke_user; fi
+    if [[ ! -d /home/ironjump/users/chroot/$assign_user ]]; then echo -e "\nLocal Account Detected!\nUser account is eligable for Assignment.\n\nReturning to Access Control Menu."; sleep 2; access_control_revoke_user; fi
+    sed -i "/$assign_user/d" /home/ironjump/endpoints/chroot/$assign_endpoint/access_control
+    echo -e "$assign_user:$(cat /home/ironjump/users/chroot/$assign_user/.ssh/authorized_keys):Revoked" >>/home/ironjump/endpoints/chroot/$assign_endpoint/access_control
+    echo -e "\nUser $assign_user Denied Access to $assign_endpoint.\nChanges may take up to 5 minutes."
+    read -p "Press [ENTER] to return to Access Control Menu" continue
+    access_control_mgmt_menu
+}
+
+access_control_list_assignments() {
+    clear
+    echo -e "Access Control Management - View Assignments"
+    nav_top_bar
+    cat /etc/passwd |sort |while IFS=: read -r username password uid gid comment home shell; do if [[ $(echo $home |grep "/home/ironjump/endpoints" |wc -l) -eq 1 ]]; then u_stat=$(passwd -S $username |awk '{print $2}'); if [[ $(echo $u_stat) == "P" ]]; then echo -e "$username (Enabled)"; while IFS=: read -r usr pubkey i_stat; do echo "    --> $usr ($i_stat)"; done <$home/access_control; else echo "$username (Disabled)"; fi; fi; done |more
+    nav_breaker_bar
+    read -p "Press [ENTER] to return to Menu." continue
+    access_control_mgmt_menu
+}
+
+
 ssh_monitor() {
     trap main_menu INT
     while true; do
@@ -963,7 +1270,7 @@ ssh_monitor() {
 
         # Add a separator for readability
         echo "--------------------------------------------"
-        echo "RAW VIEW
+        echo "RAW VIEW"
         echo "--------------------------------------------"
         lsof -i -n -P |grep ssh |grep -v "root\|7u \|8u "
         echo "--------------------------------------------"
@@ -972,3 +1279,4 @@ ssh_monitor() {
         sleep 3
     done
 }
+

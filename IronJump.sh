@@ -1,7 +1,7 @@
 #!/bin/bash
 # IronJump.sh - Unified Bastion Server & Endpoint Management Script
 # Authors: Andrew Bindner & Carlota Bindner
-# Purpose: Configure, deploy and manage IronJump Bastion Server and Endpoints
+# Purpose: Configure, deploy, and manage IronJump Bastion Server and Endpoints
 # Version: 0.1-Beta
 # License: Private
 
@@ -12,12 +12,17 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 #Save current directory and Migrate to IronJump working directory
-OLDPWD=$(pwd)
-SCRIPT_DIR="$(echo $0 |sed 's/\/IronJump\.sh//')"
-cd $SCRIPT_DIR || exit 1
+if [[ ! -f /opt/IronJump/IronJump.sh ]]; then
+    echo "The IronJump application and associated scripts must be located in /opt/IronJump folder. Please move IronJump and relaunch the application."
+    exit 1
+else
+    OLDPWD=$(pwd)
+    SCRIPT_DIR="/opt/IronJump"
+    cd $SCRIPT_DIR
+fi
 
-# Check for config file
-if [[ -f $(echo $(pwd)/CONFIG.FILE) ]]; then
+# Check for CONFIG.FILE file
+if [[ -f ./CONFIG.FILE ]]; then
     source ./CONFIG.FILE
 else
     echo "CONFIG.FILE must be in the working directory to continue."
@@ -25,7 +30,7 @@ else
 fi
 
 # Check for FUNCTIONS file
-if [[ -f $(echo $(pwd)/FUNCTIONS) ]]; then
+if [[ -f ./FUNCTIONS ]]; then
     source ./FUNCTIONS
 else
     echo "FUNCTIONS file must be in the working directory to continue."
@@ -164,7 +169,7 @@ root_server_user_acct_mgmt_menu() {
         R|r) ast_reboot ;;
         P|p) root_server_mgmt_menu ;;
         Q|q) cd $OLDPWD ; exit 0 ;;
-        *) invalid_choice ; root_server_user_acct__mgmt_menu ;;
+        *) invalid_choice ; root_server_user_acct_mgmt_menu ;;
     esac
 }
 
@@ -211,15 +216,17 @@ endpoint_device_mgmt_menu() {
     echo -e "   --> Endpoint Device Management Menu\r\n"
     echo -e "Menu Selection:\n"
     echo "1. Connect to IronJump Server (Only works on Linux & Mac)"
-    echo "2. Endpoint Device Local Administration"
+    echo "2. Force an unschedule permissions sync"
+    echo "3. Endpoint Device Local Administration"
     echo "3. Harden SSH Service on this Endpoint (Standalone Utility)"
     echo -e "D. SMELT this endpoint (Full Destruction - Not Recoverable)\r\n"
     nav_breaker_bar
     nav_foot_menu
     case $choice in
         1) ep_connect ;;
-        2) endpoint_device_local_mgmt_menu ;;
-        3) harden_ssh_service ; main_menu ;;
+        2) ep_force_sync ;;
+        3) endpoint_device_local_mgmt_menu ;;
+        4) harden_ssh_service ; main_menu ;;
         D|d) ep_smelt_dev ;;
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
@@ -291,9 +298,9 @@ access_control_mgmt_menu() {
     nav_breaker_bar
     nav_foot_menu
     case $choice in
-        #1) access_control_assign_usr ;;
-        #2) access_control_revoke_usr ;;
-        #3) access_control_list_current_assignments ;;
+        1) access_control_assign_user ;;
+        2) access_control_revoke_user ;;
+        3) access_control_list_assignments ;;
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
         P|p) main_menu ;;
@@ -302,5 +309,53 @@ access_control_mgmt_menu() {
     esac
 }
 
-#Launch IronJump (__main__) 
+access_control_assign_user() {
+    clear
+    echo -e "Access Control Management - Assign a User"
+    nav_top_bar
+    echo -e "\nNavigation:"
+    echo -e "-->Main Menu"
+    echo -e "   -->Access Control Management Menu"
+    echo -e "      --> Assign a User\r\n"
+    echo -e "Menu Selection:\n"
+    echo "1. View & Add Assignments by User"
+    echo "2. View & Add Assignments by Endpoint"
+    nav_breaker_bar
+    nav_foot_menu
+    case $choice in
+        1) assignments_add_by_user ;;
+        2) assignments_add_by_endpoint ;;
+        S|s) ssh_monitor ;;
+        R|r) ast_reboot ;;
+        P|p) access_control_mgmt_menu ;;
+        Q|q) cd $OLDPWD ; exit 0 ;;
+        *) invalid_choice ; access_control_assign_user ;;
+    esac
+}
+
+access_control_revoke_user() {
+    clear
+    echo -e "Access Control Management - Revoke a User"
+    nav_top_bar
+    echo -e "\nNavigation:"
+    echo -e "-->Main Menu"
+    echo -e "   -->Access Control Management Menu"
+    echo -e "      --> Revoke a User\r\n"
+    echo -e "Menu Selection:\n"
+    echo "1. View & Revoke Assignments by User"
+    echo "2. View & Revoke Assignments by Endpoint"
+    nav_breaker_bar
+    nav_foot_menu
+    case $choice in
+        1) assignments_revoke_by_user ;;
+        2) assignments_revoke_by_endpoint ;;
+        S|s) ssh_monitor ;;
+        R|r) ast_reboot ;;
+        P|p) access_control_mgmt_menu ;;
+        Q|q) cd $OLDPWD ; exit 0 ;;
+        *) invalid_choice ; access_control_revoke_user ;;
+    esac
+}
+
+#Launch IronJump (__main__)
 main_menu
