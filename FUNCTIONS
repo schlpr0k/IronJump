@@ -425,10 +425,6 @@ EOF
     chown root:ironsync /bin/ironjump-sync.sh
     chmod 0750 /bin/ironjump-sync.sh
     #Final Permissions Check
-    chmod 0755/home/ironjump
-    chmod 0750/home/ironjump/users
-    chmod 0750/home/ironjump/servers
-    chmod 0750/home/ironjump/endpoints
     chown -R :ironsync /home/ironjump
     echo "Building cron jobs."
     f_cron_pass_rotation
@@ -636,15 +632,6 @@ EOF
     read -p "Press [ENTER] to continue." continue
 }
 
-#deployment_menu
-deploy_secondary() {
-    #f_ssh_hard_check
-    #f_ssh_hard_os_selection
-    #f_setup_ironjump
-    #usr_mgmt_new
-    main_menu
-}
-
 view_configuration() {
     if [[ -f ./CONFIG.FILE ]]; then
         cat ./CONFIG.FILE |grep -v "^#" |grep -v ^$
@@ -653,7 +640,7 @@ view_configuration() {
     else
         echo "Configuration file not in current working director."
         echo -e "\r\n--------------------------------------------------------"
-        read -p "Press [ENTER] to continue."
+        read -p "Press [ENTER] to continue." continue
     fi
     deployment_menu
 }
@@ -664,7 +651,7 @@ mod_configuration() {
     else
         echo "Configuration file not in current working director."
         echo -e "\r\n--------------------------------------------------------"
-        read -p "Press [ENTER] to continue."
+        read -p "Press [ENTER] to continue." continue
     fi
     deployment_menu
 }
@@ -722,7 +709,7 @@ usr_mgmt_new() {
     unset NEW_PASSWORD
     echo "New user account for $usr_new_set_name created."
     echo -e "\r\n--------------------------------------------------------"
-    read -p "Press [ENTER] to continue."
+    read -p "Press [ENTER] to continue." continue
     root_server_user_acct_mgmt_menu
 }
 
@@ -733,21 +720,30 @@ usr_mgmt_enable() {
     echo -e "\n"
     read -p "Enter a username to enable: " usr_set_enable_name
     if [[ $(cat /etc/passwd |grep $usr_set_enable_name |wc -l) -eq 0 ]]; then
-        read -p "Username not found. Press [Enter] to return to the Account Management Menu." continue
+        read -p "Username not found. Press [Enter] to return to the User Account Management Menu." continue
         root_server_user_acct_mgmt_menu
     elif [[ ! -d /home/ironjump/users/chroot/$usr_set_enable_name ]]; then
         read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to Account Management Menu." continue
         root_server_user_acct_mgmt_menu
+    else
+        u_stat=$(passwd -S $usr_set_enable_name |awk '{print $2}')
+        if [[ $(echo $u_stat) == "P" ]]; then
+            echo -e "$usr_set_enable_name is already enabled."
+            nav_breaker_bar
+            read -p "Press [ENTER] to return to the User Account Management Menu." continue
+            root_server_user_acct_mgmt_menu; 
+        fi
     fi
     read -p "Are you sure you want to enable $usr_set_enable_name? Type [CONFIRM]: " choice
     if [[ $(echo $choice | tr [[:upper:]] [[:lower:]]) == "confirm" ]]; then
+        sed -i 's/^#//' /home/ironjump/users/chroot/$usr_set_enable_name/.ssh/authorized_keys
         usermod -U $usr_set_enable_name &>/dev/null
         echo "User $usr_set_enable_name is now enabled!"
         echo -e "\r\n--------------------------------------------------------"
         read -p "Press [ENTER] to continue." continue
         root_server_user_acct_mgmt_menu
     else
-        read -p "Confirmation not given. Press [ENTER] to return to the User Account Menu." continue
+        read -p "Confirmation not given. Press [ENTER] to return to the User Account Management Menu." continue
         root_server_user_acct_mgmt_menu
     fi
 }
@@ -759,14 +755,23 @@ usr_mgmt_disable() {
     echo -e "\n"
     read -p "Enter a username to disable: " usr_set_disable_name
     if [[ $(cat /etc/passwd |grep $usr_set_disable_name |wc -l) -eq 0 ]]; then
-        read -p "Username not found. Press [Enter] to return to the Account Management Menu." continue
+        read -p "Username not found. Press [Enter] to return to the User Account Management Menu." continue
         root_server_user_acct_mgmt_menu
     elif [[ ! -d /home/ironjump/users/chroot/$usr_set_disable_name ]]; then
-        read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to Account Management Menu." continue
+        read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to User Account Management Menu." continue
         root_server_user_acct_mgmt_menu
+    else
+        u_stat=$(passwd -S $usr_set_disable_name |awk '{print $2}')
+        if [[ $(echo $u_stat) == "L" ]]; then
+            echo -e "$usr_set_disable_name is already disabled."
+            nav_breaker_bar
+            read -p "Press [ENTER] to return to the User Account Management Menu." continue
+            root_server_user_acct_mgmt_menu; 
+        fi
     fi
     read -p "Are you sure you want to disable $usr_set_disable_name? Type [CONFIRM]: " choice
     if [[ $(echo $choice | tr [[:upper:]] [[:lower:]]) == "confirm" ]]; then
+        sed -i 's/^/#/' /home/ironjump/users/chroot/$usr_set_disable_name/.ssh/authorized_keys
         usermod -L $usr_set_disable_name &>/dev/null
         pkill -u $usr_set_disable_name
         echo "User $usr_set_disable_name is now disabled!"
@@ -774,7 +779,7 @@ usr_mgmt_disable() {
         read -p "Press [ENTER] to continue." continue
         root_server_user_acct_mgmt_menu
     else
-        read -p "Confirmation not given. Press [ENTER] to return to the User Account Menu." continue
+        read -p "Confirmation not given. Press [ENTER] to return to the User Account Management Menu." continue
         root_server_user_acct_mgmt_menu
     fi
 }
@@ -794,6 +799,7 @@ usr_mgmt_delete() {
     fi
     read -p "Are you sure you want to delete $usr_set_delete_name? Type [CONFIRM]: " choice
     if [[ $(echo $choice | tr [[:upper:]] [[:lower:]]) == "confirm" ]]; then
+        sed -i 's/^/#/' /home/ironjump/users/chroot/$usr_set_delete_name/.ssh/authorized_keys
         userdel -r $usr_set_delete_name &>/dev/null
         pkill -u $usr_set_delete_name
         echo "User $usr_set_delete_name has been deleted!"
@@ -830,7 +836,7 @@ usr_mgmt_mod_pubkey() {
             key=$(echo $usr_set_update_pubkey_key | awk '{print $2}')
             ssh_key=$(echo $key_type $key $usr_set_update_pubkey_name)
         fi
-    echo -e "\r\nUpdating SSH Public Key for: \r\n\tUsername: $usr_new_set_name \r\n\tPublic SSH Key: $ssh_key"
+    echo -e "\r\nUpdating SSH Public Key for: \r\n\tUsername: $usr_set_update_pubkey_name \r\n\tPublic SSH Key: $ssh_key"
     echo -e "\r\n--------------------------------------------------------"
     read -p "Press [C] to confirm or [A] to abort: " choice
     case "$choice" in
@@ -849,6 +855,11 @@ usr_mgmt_mod_pubkey() {
 }
 
 usr_mgmt_set_expire() {
+    clear
+    echo "IronJump SSH Management - Expire User Account Wizard"
+    nav_top_bar
+    echo -e "\n"
+    read -p "Enter a username to set an expiration date: " usr_set_expire_name
     if [[ $(cat /etc/passwd |grep $usr_set_expire_name |wc -l) -eq 0 ]]; then
         read -p "Username not found. Press [Enter] to return to the Account Management Menu." continue
         root_server_user_acct_mgmt_menu
@@ -972,23 +983,179 @@ EOF
 }
 
 dev_mgmt_enable() {
-    read -p "Function Good" ; dev_acct_mgmt_menu
+    clear
+    echo "IronJump SSH Management - Enable Endpoint Account Wizard"
+    nav_top_bar
+    echo -e "\n"
+    read -p "Enter a device to enable: " dev_set_enable_name
+    if [[ $(cat /etc/passwd |grep $dev_set_enable_name |wc -l) -eq 0 ]]; then
+        read -p "Device not found. Press [Enter] to return to the Endpoint Device Account Management Menu." continue
+        root_server_endpoint_acct_mgmt_menu
+    elif [[ ! -d /home/ironjump/endpoints/chroot/$dev_set_enable_name ]]; then
+        read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to Endpoint Device Account Management Menu." continue
+        root_server_endpoint_acct_mgmt_menu
+    else
+        u_stat=$(passwd -S $dev_set_enable_name |awk '{print $2}')
+        if [[ $(echo $u_stat) == "P" ]]; then
+            echo -e "$dev_set_enable_name is already enabled."
+            nav_breaker_bar
+            read -p "Press [ENTER] to return to the Endpoint Device Account Management Menu." continue
+            root_server_endpoint_acct_mgmt_menu;
+        fi
+    fi
+    read -p "Are you sure you want to enable $dev_set_enable_name? Type [CONFIRM]: " choice
+    if [[ $(echo $choice | tr [[:upper:]] [[:lower:]]) == "confirm" ]]; then
+        usermod -U $dev_set_enable_name &>/dev/null
+        sed -i 's/^#//' /home/ironjump/endpoints/chroot/$dev_set_enable_name/.ssh/authorized_keys
+        echo "Device $dev_set_enable_name is now enabled!"
+        echo "Reboot the endpoint device to re-establish connection to IronJump server. (May take up to 10 minutes)"
+        echo -e "\r\n--------------------------------------------------------"
+        read -p "Press [ENTER] to continue." continue
+        root_server_endpoint_acct_mgmt_menu
+    else
+        read -p "Confirmation not given. Press [ENTER] to return to the Endpoint Device Account Management Menu." continue
+        root_server_endpoint_acct_mgmt_menu
+    fi
 }
 
 dev_mgmt_disable() {
-    read -p "Function Good" ; dev_acct_mgmt_menu
+    clear
+    echo "IronJump SSH Management - Disable Endpoint Device Account Wizard"
+    nav_top_bar
+    echo -e "\n"
+    read -p "Enter an endpoint device to disable: " dev_set_disable_name
+    if [[ $(cat /etc/passwd |grep $dev_set_disable_name |wc -l) -eq 0 ]]; then
+        read -p "Device not found. Press [Enter] to return to the Endpoint Device Account Management Menu." continue
+        root_server_endpoint_acct_mgmt_menu
+    elif [[ ! -d /home/ironjump/endpoints/chroot/$dev_set_disable_name ]]; then
+        read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to Endpoint Device Account Management Menu." continue
+        root_server_endpoint_acct_mgmt_menu
+    else
+        u_stat=$(passwd -S $dev_set_disable_name |awk '{print $2}')
+        if [[ $(echo $u_stat) == "L" ]]; then
+            echo -e "$dev_set_disable_name is already disabled."
+            nav_breaker_bar
+            read -p "Press [ENTER] to return to the Endpoint Device Account Management Menu." continue
+            root_server_endpoint_acct_mgmt_menu; 
+        fi
+    fi
+    read -p "Are you sure you want to disable $dev_set_disable_name? Type [CONFIRM]: " choice
+    if [[ $(echo $choice | tr [[:upper:]] [[:lower:]]) == "confirm" ]]; then
+        sed -i 's/^/#/' /home/ironjump/endpoints/chroot/$dev_set_disable_name/.ssh/authorized_keys
+        usermod -L $dev_set_disable_name &>/dev/null
+        pkill -u $dev_set_disable_name
+        echo "Endpoint device $dev_set_disable_name is now disabled!"
+        echo -e "\r\n--------------------------------------------------------"
+        read -p "Press [ENTER] to continue." continue
+        root_server_endpoint_acct_mgmt_menu
+    else
+        read -p "Confirmation not given. Press [ENTER] to return to the Endpoint Device Account Management Menu." continue
+        root_server_endpoint_acct_mgmt_menu
+    fi
 }
 
 dev_mgmt_delete() {
-    read -p "Function Good" ; dev_acct_mgmt_menu
+    clear
+    echo "IronJump SSH Management - Delete Endpoint Device Account Wizard"
+    nav_top_bar
+    echo -e "\n"
+    read -p "Enter an endpoint device to delete: " dev_set_delete_name
+    if [[ $(cat /etc/passwd |grep $dev_set_delete_name |wc -l) -eq 0 ]]; then
+        read -p "Endpoint device not found. Press [Enter] to return to the Endpoint Device Account Management Menu." continue
+        root_server_endpoint_acct_mgmt_menu
+    elif [[ ! -d /home/ironjump/endpoints/chroot/$dev_set_delete_name ]]; then
+        read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to the Endpoint Device Account Management Menu." continue
+        root_server_endpoint_acct_mgmt_menu
+    fi
+    read -p "Are you sure you want to delete $dev_set_delete_name? Type [CONFIRM]: " choice
+    if [[ $(echo $choice | tr [[:upper:]] [[:lower:]]) == "confirm" ]]; then
+        userdel -r $dev_set_delete_name &>/dev/null
+        pkill -u $dev_set_delete_name
+        echo "Endpoint device $dev_set_delete_name has been deleted!"
+        echo -e "\r\n--------------------------------------------------------"
+        read -p "Press [ENTER] to continue." continue
+        root_server_endpoint_acct_mgmt_menu
+    else
+        read -p "Confirmation not given. Press [ENTER] to return to the Endpoint Device Account Management Menu." continue
+        root_server_endpoint_acct_mgmt_menu
+    fi
 }
 
 dev_mgmt_mod_pubkey() {
-    read -p "Function Good" ; dev_acct_mgmt_menu
+    clear
+    echo "IronJump SSH Management - Endpoint Device Account Public Key Update Wizard"
+    nav_top_bar
+    echo -e "\n"
+    read -p "Enter an endpoint device to modify its SSH Public Key: " dev_set_update_pubkey_name
+    if [[ $(cat /etc/passwd |grep $dev_set_update_pubkey_name |wc -l) -eq 0 ]]; then
+        read -p "Endpoint device not found. Press [Enter] to return to the Endpoint Device Account Management Menu." continue
+        root_server_endpoint_acct_mgmt_menu
+    elif [[ ! -d /home/ironjump/endpoints/chroot/$usr_set_update_pubkey_name ]]; then
+        read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to the Endpoint Device Account Management Menu." continue
+        root_server_endpoint_acct_mgmt_menu
+    else
+        read -p "   --> New SSH Pubkey {key_type key}: " dev_set_update_pubkey_key
+        if [[ ! "$dev_set_update_pubkey_key" =~ ^ssh-ed25519 ]] && [[ ! "$dev_set_update_pubkey_key" =~ ^ssh-rsa ]]; then
+            echo "SSH Pubkey must be ed25519 (recommended) or RSA. Aborting user creation."
+            echo -e "\r\n--------------------------------------------------------"
+            read -p "Press [ENTER] to continue. Returning to Endpoint Device Account Management Menu" continue
+            root_server_endpoint_acct_mgmt_menu
+        else
+            key_type=$(echo $dev_set_update_pubkey_key | awk '{print $1}')
+            key=$(echo $dev_set_update_pubkey_key | awk '{print $2}')
+            ssh_key=$(echo $key_type $key $dev_set_update_pubkey_name)
+        fi
+    echo -e "\r\nUpdateing SSH Public Key for: \r\n\tEndpoint Device: $dev_set_update_public_name \r\n\tPublic SSH Key: $ssh_key"
+    echo -e "\r\n--------------------------------------------------------"
+    read -p "Press [C] to confirm or [A] to abort: " choice
+    case "$choice" in
+        A|a) root_server_endpoint_acct_mgmt_menu ;;
+        C|c)
+            echo $ssh_key > /home/ironjump/endpoints/chroot/$usr_set_update_pubkey_name/.ssh/authorized_keys
+            chown $usr_set_update_pubkey_name:$usr_set_update_pubkey_name /home/ironjump/endpoints/chroot/$usr_set_update_pubkey_name/.ssh/authorized_keys
+            chmod 0600 /home/ironjump/endpoints/chroot/$usr_set_update_pubkey_name/.ssh/authorized_keys
+            ;;
+        *) invalid_choice; root_server_endpoint_mgmt_menu ;;
+    esac
+    fi
+    root_server_endpoint_acct_mgmt_menu
 }
 
 dev_mgmt_set_expire() {
-    read -p "Function Good" ; dev_acct_mgmt_menu
+    clear
+    echo "IronJump SSH Management - Expire Endpoint Device Account Wizard"
+    nav_top_bar
+    echo -e "\n"
+    read -p "Enter an endpoint device to set an expiration date: " dev_set_expire_name
+    if [[ $(cat /etc/passwd |grep $dev_set_expire_name |wc -l) -eq 0 ]]; then
+        read -p "Endpoint device not found. Press [Enter] to return to the Endpoint Device Account Management Menu." continue
+        root_server_endpoint_acct_mgmt_menu
+    fi
+    if [[ ! -d /home/ironjump/endpoints/chroot/$dev_set_expire_name ]]; then
+        read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to the Endpoint Device Account Management Menu." continue
+        root_server_endpoint_acct_mgmt_menu
+    else
+        echo -e "To set an expiration, specify the number of days as:\r\n\t   -1: Never Expire, or\r\n\t1-999: Number of days from now\r\n"
+        read -p "In how many days from today would you like the account to expire? " dev_set_expire_days
+        dev_set_expire=$(echo $dev_set_expire_days |tr -d "+")
+        if [[ "$dev_set_expire_days" == "-1" ]]; then
+            chage -E -1 $dev_set_expire_name
+            echo "Endpoint device $dev_set_expire_name is set to never expire."
+            echo -e "\r\n--------------------------------------------------------"
+            read -p "Press [ENTER] to continue." continue
+            root_server_endpoint_acct_mgmt_menu
+        elif [[ "$dev_set_expire_days" =~ ^[0-9]+$ ]] && [[ "$dev_set_expire_days" -gt 0 ]]; then
+            chage -E $(date -d "+$dev_set_expire_days days" +%Y-%m-%d) $dev_set_expire_name
+            echo "Endpoint device $dev_set_expire_name account will expire in $dev_set_expire_days days."
+            echo -e "\r\n--------------------------------------------------------"
+            read -p "Press [ENTER] to continue." continue
+            root_server_endpoint_acct_mgmt_menu
+        else
+            echo "Invalid number of days specified. Only the number 1-999 or -1 can be used."
+            read -p "Press [ENTER] to try again." continue
+            dev_mgmt_set_expire
+        fi
+    fi
 }
 
 #ep_mgmt_menu
@@ -1124,43 +1291,13 @@ ep_force_sync(){
     endpoint_dev_mgmt_menu
 }
 
-ep_add_local_usr() {
-#    read -p "Function Good" ; ep_mgmt_menu
-    #usr_mgmt_new
-    ep_mgmt_menu
-}
-
-ep_promote_local_usr() {
-    read -p "Function Good" ; ep_mgmt_menu
-}
-
-ep_enable_local_usr() {
-    read -p "Function Good" ; ep_mgmt_menu
-}
-
-ep_disable_local_usr() {
-    read -p "Function Good" ; ep_mgmt_menu
-}
-
-ep_expire_local_usr() {
-    read -p "Function Good" ; ep_mgmt_menu
-}
-
-ep_chpass_local_usr() {
-    read -p "Function Good" ; ep_mgmt_menu
-}
-
-ep_mod_local_usr_pubkey() {
-    read -p "Function Good" ; ep_mgmt_menu
-}
-
-ep_delete_local_usr() {
-    read -p "Function Good" ; ep_mgmt_menu
-}
-
 ep_smelt_device() {
-    read -p "Function Good" ; ep_mgmt_menu
-    #THIS IS COMPLETE, BUT FOR DEVELOPMENT IS NOT INCLUDED ON THIS SYSTEM'S CODE.
+    clear
+    echo "System Meltdown: Execution of Leathal Termination (S.M.E.L.T.)"
+    nav_top_bar
+    echo "THIS IS COMPLETE, BUT FOR DEVELOPMENT IS NOT INCLUDED ON THIS SYSTEM'S CODE."
+    read -p "Function Good" continue
+    ep_mgmt_menu
 }
 
 #Access Control Management
