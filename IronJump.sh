@@ -193,11 +193,11 @@ root_server_endpoint_acct_mgmt_menu() {
     case $choice in
         1) dev_mgmt_list ; root_server_endpoint_acct_mgmt_menu ;;
         2) dev_mgmt_new ; root_server_endpoint_acct_mgmt_menu ;;
-        #3) dev_mgmt_enable ;;
-        #4) dev_mgmt_disable ;;
-        #5) dev_mgmt_delete ;;
-        #6) dev_mgmt_mod_pubkey ;;
-        #7) dev_mgmt_set_expire ;;
+        3) dev_mgmt_enable ;;
+        4) dev_mgmt_disable ;;
+        5) dev_mgmt_delete ;;
+        6) dev_mgmt_mod_pubkey ;;
+        7) dev_mgmt_set_expire ;;
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
         P|p) root_server_mgmt_menu ;;
@@ -217,7 +217,6 @@ endpoint_device_mgmt_menu() {
     echo -e "Menu Selection:\n"
     echo "1. Connect to IronJump Server (Only works on Linux & Mac)"
     echo "2. Force an unschedule permissions sync"
-    echo "3. Endpoint Device Local Administration"
     echo "3. Harden SSH Service on this Endpoint (Standalone Utility)"
     echo -e "D. SMELT this endpoint (Full Destruction - Not Recoverable)\r\n"
     nav_breaker_bar
@@ -225,62 +224,13 @@ endpoint_device_mgmt_menu() {
     case $choice in
         1) ep_connect ;;
         2) ep_force_sync ;;
-        3) endpoint_device_local_mgmt_menu ;;
-        4) harden_ssh_service ; main_menu ;;
+        3) harden_ssh_service ; main_menu ;;
         D|d) ep_smelt_dev ;;
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
         P|p) main_menu ;;
         Q|q) cd $OLDPWD ; exit 0 ;;
         *) invalid_choice ; endpoint_device_mgmt_menu ;;
-    esac
-}
-
-endpoint_device_local_mgmt_menu() {
-    clear
-    nav_head_menu
-    echo "Navigation:"
-    echo -e "--> Main Menu"
-    echo -e "   --> Endpoint Device Management Menu"
-    echo -e "      --> Endpoint Device Local Administration\r\n"
-    echo -e "Menu Selection:\n"
-    echo "!! NOTE: The following  menu is for convenient local management of an endpoint only and"
-    echo -e "\t   meant to help with the setup and integrate with IronJump bastions."
-    echo -e "\t - Use this menu to create and manage local user and endpoint accounts."
-    echo -e "\t - Create the host's SSH public and private keys, THEN use the public key"
-    echo -e "\t   and same account name on the root and/or upstream server(s)."
-    echo -e "\t - Endpoints SSH keys DO NOT have a passphrase."
-    echo -e "\t - User created here will have a full root shell to the endpoint. Unlike"
-    echo -e "\t   root servers"
-    echo -e "\t - User's need to change their local passwords on this endpoint.\r\n"
-    echo "a. List Local User Accounts."
-    echo "b. Add a Local (SSH-Enabled) User Account"
-    echo "c. Promote Local User to sudoers, sudo, admin, and/or wheel Groups"
-    echo "d. Disable Local User"
-    echo "e. Enable Local User"
-    echo "f. Change Local User Password"
-    echo "g. Change Local User Public Key"
-    echo "h. Set Local User Account Expiration"
-    echo "i. Delete Local User"
-    echo "j. Change Endpoint Network Information"
-    nav_breaker_bar
-    nav_foot_menu
-    case $choice in
-        #A|a) ep_list_local_users ;;
-        B|b) ep_add_local_usr ;;
-        C|c) ep_promote_local_usr ;;
-        D|d) ep_disable_local_usr ;;
-        E|e) ep_enable_local_usr ;;
-        F|f) ep_chpass_local_usr ;;
-        G|g) ep_mod_local_usr_pubkey ;;
-        H|h) ep_expire_local_usr ;;
-        I|i) ep_delete_local_usr ;;
-        #J|j) ep_change_ip_address ;;
-        S|s) ssh_monitor ;;
-        R|r) ast_reboot ;;
-        P|p) endpoint_device_mgmt_menu ;;
-        Q|q) cd $OLDPWD ; exit 0 ;;
-        *) invalid_choice ; endpoint_device_local_mgmt_menu ;;
     esac
 }
 
