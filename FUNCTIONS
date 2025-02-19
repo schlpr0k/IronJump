@@ -527,12 +527,12 @@ f_os_identity() {
 f_make_setup() {
     # Check if make utility is installed. Required for AutoSSH.
     case "$PKG_MANAGER" in
-        "apt") sudo apt install -y make gcc ;;
-        "yum") sudo yum install -y make gcc ;;
-        "dnf") sudo dnf install -y make gcc ;;
-        "pacman") sudo pacman -Sy --noconfirm make gcc ;;
-        "pkg") sudo pkg install -y make gcc ;;
-        "pkg_add") sudo pkg_add make gcc ;;
+        "apt") apt install -y make gcc ;;
+        "yum") yum install -y make gcc ;;
+        "dnf") dnf install -y make gcc ;;
+        "pacman") pacman -Sy --noconfirm make gcc ;;
+        "pkg") pkg install -y make gcc ;;
+        "pkg_add") pkg_add make gcc ;;
         *) echo "Package manager not recognized. Cannot install the make utility."; return 1 ;;
     esac
 }
@@ -540,12 +540,12 @@ f_make_setup() {
 f_sshd_setup() {
     # Check if SSH client is installed
     case "$PKG_MANAGER" in
-        "apt") sudo apt update && sudo apt install -y openssh-client openssh-server ssh ;;
-        "yum") sudo yum install -y openssh-clients openssh-server ssh ;;
-        "dnf") sudo dnf install -y openssh-clients openssh-server ssh;;
-        "pacman") sudo pacman -Sy --noconfirm openssh ;;
-        "pkg") sudo pkg install -y openssh ;;
-        "pkg_add") sudo pkg_add openssh ;;
+        "apt") apt update && apt install -y openssh-client openssh-server ssh ;;
+        "yum") yum install -y openssh-clients openssh-server ssh ;;
+        "dnf") dnf install -y openssh-clients openssh-server ssh;;
+        "pacman") pacman -Sy --noconfirm openssh ;;
+        "pkg") pkg install -y openssh ;;
+        "pkg_add") pkg_add openssh ;;
         *) echo "Package manager not recognized. Cannot install SSH client."; return 1 ;;
     esac
 
@@ -553,11 +553,11 @@ f_sshd_setup() {
     echo "Enabling and starting SSHD..."
     case "$PKG_MANAGER" in
         "apt"|"dnf"|"yum"|"pacman")
-            sudo systemctl enable ssh 2>/dev/null || sudo systemctl enable sshd
-            sudo systemctl restart ssh 2>/dev/null || sudo systemctl restart sshd
+            systemctl enable ssh 2>/dev/null || systemctl enable sshd
+            systemctl restart ssh 2>/dev/null || systemctl restart sshd
             ;;
-        "pkg") sudo service sshd enable && sudo service sshd start ;;
-        "pkg_add") sudo rcctl enable sshd && sudo rcctl start sshd ;;
+        "pkg") service sshd enable && service sshd start ;;
+        "pkg_add") rcctl enable sshd && rcctl start sshd ;;
         *) echo "Service management not recognized."; return 1 ;;
     esac
 
@@ -569,12 +569,12 @@ f_cron_setup() {
     if ! command -v crond &> /dev/null && ! command -v cron &> /dev/null; then
         echo "Cron is not installed. Installing..."
         case "$PKG_MANAGER" in
-            "apt") sudo apt update && sudo apt install -y cron ;;
-            "yum") sudo yum install -y cronie ;;
-            "dnf") sudo dnf install -y cronie ;;
-            "pacman") sudo pacman -Sy --noconfirm cronie ;;
-            "pkg") sudo pkg install -y cron ;;
-            "pkg_add") sudo pkg_add cron ;;
+            "apt") apt update && apt install -y cron ;;
+            "yum") yum install -y cronie ;;
+            "dnf") dnf install -y cronie ;;
+            "pacman") pacman -Sy --noconfirm cronie ;;
+            "pkg") pkg install -y cron ;;
+            "pkg_add") pkg_add cron ;;
             *) echo "Package manager not recognized. Cannot install cron."; return 1 ;;
         esac
     else
@@ -585,11 +585,11 @@ f_cron_setup() {
     echo "Enabling and starting cron..."
     case "$PKG_MANAGER" in
         "apt"|"dnf"|"yum"|"pacman")
-            sudo systemctl enable crond 2>/dev/null || sudo systemctl enable cron
-            sudo systemctl restart crond 2>/dev/null || sudo systemctl restart cron
+            systemctl enable crond 2>/dev/null || systemctl enable cron
+            systemctl restart crond 2>/dev/null || systemctl restart cron
             ;;
-        "pkg") sudo service cron enable && sudo service cron start ;;
-        "pkg_add") sudo rcctl enable cron && sudo rcctl start cron ;;
+        "pkg") service cron enable && service cron start ;;
+        "pkg_add") rcctl enable cron && rcctl start cron ;;
         *) echo "Service management not recognized."; return 1 ;;
     esac
 
