@@ -6,7 +6,7 @@ ast_reboot() {
 }
 
 prompt_reboot() {
-    #TBD - Implemnet Reboot Instead of Exit
+    #TBD - Implement Reboot Instead of Exit
     read -p "(C)ontinue or (R)eturn: " prompt_response
     case "$prompt_response" in
         C|c) echo -e "\r\n\tRebooting server in 10 seconds... Press Ctrl+C to halt reboot." ; sleep 10 ; exit 0 ;;
@@ -217,7 +217,7 @@ f_ssh_hard_s4() {
 }
 
 f_ssh_hard_s5() {
-    #Specific harding commands for Ubuntu 18.04
+    #Specific hardening commands for Ubuntu 18.04
     echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\nHostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com" >> $SSH_CONFIG_FILE
     f_ssh_set_configuration
     service ssh restart
@@ -606,7 +606,7 @@ PASSWORD_LENGTH="64"
 #        used for management of the bastion servers. Furthermore, the endpoints that connect to an IronJump bastion are treated similarly.
 #        This is to prevent elevating privileges or connecting to other hosts in the IronJump ecosystem. Endpoints and Downstream IronJump
 #        bastions are connected without password protected keys. Therefore, it is vital to ensure that someone cannot guess a
-#        password for the account in use. By rotating the passwords every 8 hours, the use of passwords is efectively disabled.
+#        password for the account in use. By rotating the passwords every 8 hours, the use of passwords is effectively disabled.
 
 ## NOTE: It is not recommended to change these settings unless there is a good reason. There is a passcode generator function in the
 #        IronJump menu under Endpoint Management to create or reset a password of a new or existing user directly on the host.
@@ -675,7 +675,7 @@ harden_ssh_service() {
 }
 
 usr_mgmt_list() {
-    cat /etc/passwd |sort |while IFS=: read -r username password uid gid comment home shell; do if [[ $(echo $home |grep "/home/ironjump/users" |wc -l) -eq 1 ]]; then u_stat=$(passwd -S $username |awk '{print $2}'); if [[ $(echo $u_stat) == "P" ]]; then echo -e "$username :: Pubic Key - $(cat $home/.ssh/authorized_keys) :: (Enabled)"; else echo "$username :: Public Key - $(cat $home/.ssh/authorized_keys) :: (Disabled)"; fi; fi; done |more
+    cat /etc/passwd |sort |while IFS=: read -r username password uid gid comment home shell; do if [[ $(echo $home |grep "/home/ironjump/users" |wc -l) -eq 1 ]]; then u_stat=$(passwd -S $username |awk '{print $2}'); if [[ $(echo $u_stat) == "P" ]]; then echo -e "$username :: Public Key - $(cat $home/.ssh/authorized_keys) :: (Enabled)"; else echo "$username :: Public Key - $(cat $home/.ssh/authorized_keys) :: (Disabled)"; fi; fi; done |more
     read -p "Press [ENTER] to return to the menu." continue
     root_server_user_acct_mgmt_menu
 }
@@ -830,7 +830,7 @@ usr_mgmt_mod_pubkey() {
             key=$(echo $usr_set_update_pubkey_key | awk '{print $2}')
             ssh_key=$(echo $key_type $key $usr_set_update_pubkey_name)
         fi
-    echo -e "\r\nUpdateing SSH Public Key for: \r\n\tUsername: $usr_new_set_name \r\n\tPublic SSH Key: $ssh_key"
+    echo -e "\r\nUpdating SSH Public Key for: \r\n\tUsername: $usr_new_set_name \r\n\tPublic SSH Key: $ssh_key"
     echo -e "\r\n--------------------------------------------------------"
     read -p "Press [C] to confirm or [A] to abort: " choice
     case "$choice" in
@@ -965,7 +965,7 @@ EOF
     nav_top_bar
     echo "Username: "$ep_account_name
     echo "Password: "$token
-    echo -e "\r\n!!!Write this down!!!\nThese are single use credentials for endpoint registraiton.\n\nAdvancing to the next screen will remove the credentials \nfrom view and they will not be shown again."
+    echo -e "\r\n!!!Write this down!!!\nThese are single use credentials for endpoint registration.\n\nAdvancing to the next screen will remove the credentials \nfrom view and they will not be shown again."
     nav_breaker_bar
     unset token
     read -p "Press ENTER to return." choice
@@ -1168,9 +1168,9 @@ assignments_add_by_user() {
     clear
     echo -e "Access Control Management - Assign a User - Wizard"
     nav_top_bar
-    read -p "Please specifiy a user account: " assign_user
+    read -p "Please specify a user account: " assign_user
     if ! $(id $assign_user &>/dev/null); then echo "User not found. Returning to Access Control Menu."; sleep 1; access_control_assign_user; fi
-    if [[ ! -d /home/ironjump/users/chroot/$assign_user ]]; then echo -e "\nLocal Account Detected!\nUser account is eligable for Assignment.\n\nReturning to Access Control Menu."; sleep 2; access_control_assign_user; fi
+    if [[ ! -d /home/ironjump/users/chroot/$assign_user ]]; then echo -e "\nLocal Account Detected!\nUser account is eligible for Assignment.\n\nReturning to Access Control Menu."; sleep 2; access_control_assign_user; fi
     echo -e "\nCurrent User Assignments: $assign_user\n------------------------\n"
     grep -H $assign_user /home/ironjump/endpoints/chroot/*/access_control |awk -F'[:,/]' '{print "   --> " $(NF-4) ": " $NF}'
     read -p "What endpoint should $assign_user be allowed access: " assign_endpoint
@@ -1187,14 +1187,14 @@ assignments_add_by_endpoint() {
     clear
     echo -e "Access Control Management - Assign a User - Wizard"
     nav_top_bar
-    read -p "Please specifiy an endpoint: " assign_endpoint
+    read -p "Please specify an endpoint: " assign_endpoint
     if ! $(id $assign_endpoint &>/dev/null); then echo "Endpoint account not found. Returning to Access Control Menu."; sleep 1; access_control_assign_user; fi
     if [[ ! -d /home/ironjump/endpoints/chroot/$assign_endpoint ]]; then echo -e "\nEndpoint exists, but no home director found.\n\nReturning to Access Control Menu."; sleep 2; access_control_assign_user; fi
     echo -e "\nCurrent User Assignments: $assign_endpoint\n------------------------\n"
     cat /home/ironjump/endpoints/chroot/$assign_endpoint/access_control |awk -F'[:,/]' '{print "    --> " $1 ": " $NF}'
     read -p "What what user should be allowed access to $assign_endpoint: " assign_user
     if ! $(id $assign_user &>/dev/null); then echo "User Account not found. Returning to Access Control Menu."; sleep 1; access_control_assign_user; fi
-    if [[ ! -d /home/ironjump/users/chroot/$assign_user ]]; then echo -e "\nLocal Account Detected!\nUser account is eligable for Assignment.\n\nReturning to Access Control Menu."; sleep 2; access_control_assign_user; fi
+    if [[ ! -d /home/ironjump/users/chroot/$assign_user ]]; then echo -e "\nLocal Account Detected!\nUser account is eligible for Assignment.\n\nReturning to Access Control Menu."; sleep 2; access_control_assign_user; fi
     sed -i "/$assign_user/d" /home/ironjump/endpoints/chroot/$assign_endpoint/access_control
     echo -e "$assign_user:$(cat /home/ironjump/users/chroot/$assign_user/.ssh/authorized_keys):Allowed" >>/home/ironjump/endpoints/chroot/$assign_endpoint/access_control
     echo -e "\nUser $assign_user Allowed Access to $assign_endpoint.\nChanges may take up to 5 minutes."
@@ -1206,9 +1206,9 @@ assignments_revoke_by_user() {
     clear
     echo -e "Access Control Management - Revoke a User - Wizard"
     nav_top_bar
-    read -p "Please specifiy a user account: " assign_user
+    read -p "Please specify a user account: " assign_user
     if ! $(id $assign_user &>/dev/null); then echo "User not found. Returning to Access Control Menu."; sleep 1; access_control_revoke_user; fi
-    if [[ ! -d /home/ironjump/users/chroot/$assign_user ]]; then echo -e "\nLocal Account Detected!\nUser account is eligable for Assignment.\n\nReturning to Access Control Menu."; sleep 2; access_control_revoke_user; fi
+    if [[ ! -d /home/ironjump/users/chroot/$assign_user ]]; then echo -e "\nLocal Account Detected!\nUser account is eligible for Assignment.\n\nReturning to Access Control Menu."; sleep 2; access_control_revoke_user; fi
     echo -e "\nCurrent User Assignments: $assign_user\n------------------------\n"
     grep -H $assign_user /home/ironjump/endpoints/chroot/*/access_control |awk -F'[:,/]' '{print "   --> " $(NF-4) ": " $NF}'
     read -p "On what endpoint should $assign_user be revoked: " assign_endpoint
@@ -1225,14 +1225,14 @@ assignments_revoke_by_endpoint() {
     clear
     echo -e "Access Control Management - Revoke a User - Wizard"
     nav_top_bar
-    read -p "Please specifiy an endpoint: " assign_endpoint
+    read -p "Please specify an endpoint: " assign_endpoint
     if ! $(id $assign_endpoint &>/dev/null); then echo "Endpoint account not found. Returning to Access Control Menu."; sleep 1; access_control_revoke_user; fi
     if [[ ! -d /home/ironjump/endpoints/chroot/$assign_endpoint ]]; then echo -e "\nEndpoint exists, but no home director found.\n\nReturning to Access Control Menu."; sleep 2; access_control_revoke_user; fi
     echo -e "\nCurrent User Assignments: $assign_endpoint\n------------------------\n"
     cat /home/ironjump/endpoints/chroot/$assign_endpoint/access_control |awk -F'[:,/]' '{print "    --> " $1 ": " $NF}'
     read -p "What what user should have access revoked from $assign_endpoint: " assign_user
     if ! $(id $assign_user &>/dev/null); then echo "User Account not found. Returning to Access Control Menu."; sleep 1; access_control_revoke_user; fi
-    if [[ ! -d /home/ironjump/users/chroot/$assign_user ]]; then echo -e "\nLocal Account Detected!\nUser account is eligable for Assignment.\n\nReturning to Access Control Menu."; sleep 2; access_control_revoke_user; fi
+    if [[ ! -d /home/ironjump/users/chroot/$assign_user ]]; then echo -e "\nLocal Account Detected!\nUser account is eligible for Assignment.\n\nReturning to Access Control Menu."; sleep 2; access_control_revoke_user; fi
     sed -i "/$assign_user/d" /home/ironjump/endpoints/chroot/$assign_endpoint/access_control
     echo -e "$assign_user:$(cat /home/ironjump/users/chroot/$assign_user/.ssh/authorized_keys):Revoked" >>/home/ironjump/endpoints/chroot/$assign_endpoint/access_control
     echo -e "\nUser $assign_user Denied Access to $assign_endpoint.\nChanges may take up to 5 minutes."

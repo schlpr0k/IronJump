@@ -154,7 +154,7 @@ root_server_user_acct_mgmt_menu() {
     echo "4. Disable Existing IronJump User Account"
     echo "5. Delete Existing IronJump User Account"
     echo "6. Change a IronJump User's SSH Public Key"
-    echo "7. Set Epiration of a IronJump User's Account"
+    echo "7. Set Expiration of a IronJump User's Account"
     nav_breaker_bar
     nav_foot_menu
     case $choice in
@@ -187,7 +187,7 @@ root_server_endpoint_acct_mgmt_menu() {
     echo "4. Disable Existing Endpoint Device Account"
     echo "5. Delete Existing Endpoint Device Account"
     echo "6. Change an Endpoint Device's SSH Public Key"
-    echo "7. Set Epiration of an Endpoint Device's Account"
+    echo "7. Set Expiration of an Endpoint Device's Account"
     nav_breaker_bar
     nav_foot_menu
     case $choice in
@@ -216,7 +216,7 @@ endpoint_device_mgmt_menu() {
     echo -e "   --> Endpoint Device Management Menu\r\n"
     echo -e "Menu Selection:\n"
     echo "1. Connect to IronJump Server (Only works on Linux & Mac)"
-    echo "2. Force an unschedule permissions sync"
+    echo "2. Force an unscheduled permissions sync"
     echo "3. Endpoint Device Local Administration"
     echo "3. Harden SSH Service on this Endpoint (Standalone Utility)"
     echo -e "D. SMELT this endpoint (Full Destruction - Not Recoverable)\r\n"
