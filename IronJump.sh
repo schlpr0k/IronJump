@@ -218,7 +218,7 @@ endpoint_device_mgmt_menu() {
     echo "1. Connect to IronJump Server (Only works on Linux & Mac)"
     echo "2. Force an unscheduled permissions sync"
     echo "3. Endpoint Device Local Administration"
-    echo "3. Harden SSH Service on this Endpoint (Standalone Utility)"
+    echo "4. Harden SSH Service on this Endpoint (Standalone Utility)"
     echo -e "D. SMELT this endpoint (Full Destruction - Not Recoverable)\r\n"
     nav_breaker_bar
     nav_foot_menu
