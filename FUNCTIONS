@@ -957,7 +957,7 @@ EOF
     chmod 700 "$dev_new_set_sshdir"
     chmod 600 "$dev_new_set_authorized_keys"
     chown -R :ironsync $dev_new_set_homedir
-    chown root:ironsync $dev_new_set_homedir/access_contorl
+    chown root:ironsync $dev_new_set_homedir/access_control
     chmod 0740 $dev_new_set_homedir/access_control
     #Display Username and Password Instructions
     clear
