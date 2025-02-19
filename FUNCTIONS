@@ -595,7 +595,7 @@ f_cron_pass_rotation() {
 # Password rotation for IronJump Downstream Bastions, Endpoints, and SSH Users
 IRONJUMP_SSH_GROUP="ironjump_users"
 IRONJUMP_SRV_GROUP="ironjump_servers"
-IRONJUMP_END_GROUP="ironjump_enpoints"
+IRONJUMP_END_GROUP="ironjump_endpoints"
 PASSWORD_LENGTH="64"
 
 
