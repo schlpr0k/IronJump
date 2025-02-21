@@ -1,0 +1,3 @@
+[submodule "autossh"]
+	path = autossh
+	url = https://github.com/Autossh/autossh
