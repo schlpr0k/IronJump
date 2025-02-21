@@ -5,6 +5,15 @@
 # Version: 0.1-Beta
 # License: Private
 
+# Global Variables - DO NOT CHANGE THESE! IRONJUMP WILL BREAK!
+LOG_FILE="/var/log/ironjump.log"
+IRONJUMP_SSH_GROUP="ironjump_users"
+IRONJUMP_SRV_GROUP="ironjump_servers"
+IRONJUMP_END_GROUP="ironjump_endpoints"
+IRONJUMP_CHROOT_ENV="/home/ironjump"
+PASSWORD_LENGTH="64"
+PASSWORD_ROTATION="8"
+
 # Ensure the script is run as root
 if [[ $EUID -ne 0 ]]; then
     echo "This script must be run as root or with sudo privileges."
@@ -21,19 +30,19 @@ else
     cd $SCRIPT_DIR
 fi
 
-# Check for CONFIG.FILE file
-if [[ -f ./CONFIG.FILE ]]; then
-    source ./CONFIG.FILE
+# Check for ironjump-ssh.conf file
+if [[ -f ./ironjump-ssh.conf ]]; then
+    source ./ironjump-ssh.conf
 else
-    echo "CONFIG.FILE must be in the working directory to continue."
+    echo "ironjump-ssh.conf must be in the working directory to continue."
     exit 1
 fi
 
-# Check for FUNCTIONS file
-if [[ -f ./FUNCTIONS ]]; then
-    source ./FUNCTIONS
+# Check for functions file
+if [[ -f ./functions ]]; then
+    source ./functions
 else
-    echo "FUNCTIONS file must be in the working directory to continue."
+    echo "The functions file must be in the working directory to continue."
     exit 1
 fi
 

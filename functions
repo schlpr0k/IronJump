@@ -1196,20 +1196,32 @@ ep_connect() {
     nav_breaker_bar
     echo -e "When prompted, please use the access token for SSH.\n"
     read -p "Press [ENTER] to continue." continue
-    if grep -q "^ironjump_srv_ip=" ./ironjump-ssh.conf; then
-        sed -i "s|^ironjump_srv_ip=.*|ironjump_srv_ip=$ironjump_srv_ip|" ./ironjump-ssh.conf
+    #Sets environment variable IRONJUMP_SERVER or changes it every ep_connect registration execution.
+    #Needed as environment variable for /bin/ironjump-connect.sh and /bin/ironjump-sync.sh
+    if [[ -z $IRONJUMP_SERVER ]]; then
+        echo -e "IRONJUMP_SERVER=$ironjump_srv_ip" >> /etc/environment
     else
-        sed -i "4i ironjump_srv_ip=$ironjump_srv_ip" ./ironjump-ssh.conf
+        sed -i "s/^IRONJUMP_SERVER.*$/IRONJUMP=$ironjump_srv_ip/" /etc/environment
     fi
+    #Sets environment variable IRONJUMP_EP_NAME or changes it every ep_connect registration execution.
+    #Needed as environment variable for /bin/ironjump-connect.sh and /bin/ironjump-sync.sh
+    if [[ -z $IRONJUMP_EP_NAME ]]; then
+        echo -e "IRONJUMP_EP_NAME=$ironjump_ep_name" >> /etc/environment
+    else
+        sed -i "s/^IRONJUMP_EP_NAME.*$/IRONJUMP_EP_NAME=$ironjump_ep_name/" /etc/environment
+    fi
+    source /etc/environment
     clear
     if [[ ! -d /root/.ssh ]]; then mkdir /root/.ssh; chmod 0700 /root/.ssh; fi
-    ssh $ironjump_ep_name@$ironjump_srv_ip |tee /root/ingot-keys
+    ssh $IRONJUMP_EP_NAME@$IRONJUMP_SERVER |tee /root/ingot-keys
     echo "Migrating Keys"; sleep 5
-    echo $ironjump_ep_name > /etc/hostname
-    if [[ ! -z $HOST ]]; then sed -i "s/$HOST/$ironjump_ep_name/g" /etc/hosts; fi
-    if [[ ! -z $HOSTNAME ]]; then sed -i "s/$HOSTNAME/$ironjump_ep_name/g" /etc/hosts; fi
-    HOST=$ironjump_ep_name
-    HOSTNAME=$ironjump_ep_name
+    echo $IRONJUMP_EP_NAME > /etc/hostname
+    #Update hosts file with new hostname; most Linux systems use the environment variable of HOST or HOSTNAME
+    if [[ ! -z $HOST ]]; then sed -i "s/$HOST/$IRONJUMP_EP_NAME/g" /etc/hosts; fi
+    if [[ ! -z $HOSTNAME ]]; then sed -i "s/$HOSTNAME/$IRONJUMP_EP_NAME/g" /etc/hosts; fi
+    ## TODO: Next 2 lines may not be necessary because the host will reboot after registration and these will be updated.
+    HOST=$IRONJUMP_EP_NAME
+    HOSTNAME=$IRONJUMP_EP_NAME
     cat /root/ingot-keys |grep ironjump_key |cut -d '"' -f2 |sed -e 's/-\ /-\n/g' -e 's/\ -/\n-/g' >/root/.ssh/ironjump_key
     cat /root/ingot-keys |grep ironsync_key |cut -d '"' -f2 |sed -e 's/-\ /-\n/g' -e 's/\ -/\n-/g' >/root/.ssh/ironsync_key
     rm -f /root/ingot-keys
@@ -1222,12 +1234,12 @@ ep_connect() {
     if [[ -f /bin/ironjump-connect.sh ]]; then rm -f /bin/ironjump-connect.sh; fi
     cat <<EOF > /bin/ironjump-connect.sh
 #!/bin/bash
-autossh -M 0 -f -o "StrictHostKeyChecking no" -N -i /root/.ssh/ironjump_key -R $(cat /etc/hostname |cut -d '-' -f 2):localhost:22 $(cat /etc/hostname)@$ironjump_srv_ip
+autossh -M 0 -f -o "StrictHostKeyChecking no" -N -i /root/.ssh/ironjump_key -R $(cat /etc/hostname |cut -d '-' -f 2):localhost:22 $(cat /etc/hostname)@$IRONJUMP_SERVER
 EOF
     if [[ -f /bin/ironjump-sync-.sh ]]; then rm -f /bin/ironjump-sync.sh; fi
     cat <<EOF > /bin/ironjump-sync.sh
 #!/bin/bash
-ac_host=\$(cat /etc/hostname) ssh -i /root/.ssh/ironsync_key -o "StrictHostKeyChecking no" -o "SendEnv ac_host" ironsync@$ironjump_srv_ip > /root/.ssh/access_control
+ac_host=\$(cat /etc/hostname) ssh -i /root/.ssh/ironsync_key -o "StrictHostKeyChecking no" -o "SendEnv ac_host" ironsync@$IRONJUMP_SERVER > /root/.ssh/access_control
 sleep 5
 echo -e "\r\nLast Update: \$(date)" >> /root/.ssh/access_control
 
@@ -1285,8 +1297,8 @@ EOF
     (crontab -l 2>/dev/null; echo "@reboot /bin/ironjump-sync.sh") | crontab -
     (crontab -l 2>/dev/null; echo "*/5 * * * * /bin/ironjump-sync.sh") | crontab -
 
-    read -p "The endpoint will reboot in 15 seconds. Press [ENTER] to continue." continue
-    sleep 15; shutdown -r now
+    read -p "The endpoint will now reboot. Press [ENTER] to continue." continue
+    shutdown -r now
     ep_mgmt_menu
 }
 
