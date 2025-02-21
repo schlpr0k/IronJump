@@ -644,8 +644,8 @@ EOF
 }
 
 view_configuration() {
-    if [[ -f ./CONFIG.FILE ]]; then
-        cat ./CONFIG.FILE |grep -v "^#" |grep -v ^$
+    if [[ -f ./ironjump-ssh.conf ]]; then
+        cat ./ironjump-ssh.conf |grep -v "^#" |grep -v ^$
         echo -e "\r\n--------------------------------------------------------"
         read -p "Press [ENTER] to continue."
     else
@@ -657,8 +657,8 @@ view_configuration() {
 }
 
 mod_configuration() {
-    if [[ -f ./CONFIG.FILE ]]; then
-        vi ./CONFIG.FILE
+    if [[ -f ./ironjump-ssh.conf ]]; then
+        vi ./ironjump-ssh.conf
     else
         echo "Configuration file not in current working director."
         echo -e "\r\n--------------------------------------------------------"
@@ -1196,10 +1196,10 @@ ep_connect() {
     nav_breaker_bar
     echo -e "When prompted, please use the access token for SSH.\n"
     read -p "Press [ENTER] to continue." continue
-    if grep -q "^ironjump_srv_ip=" ./CONFIG.FILE; then
-        sed -i "s|^ironjump_srv_ip=.*|ironjump_srv_ip=$ironjump_srv_ip|" ./CONFIG.FILE
+    if grep -q "^ironjump_srv_ip=" ./ironjump-ssh.conf; then
+        sed -i "s|^ironjump_srv_ip=.*|ironjump_srv_ip=$ironjump_srv_ip|" ./ironjump-ssh.conf
     else
-        sed -i "4i ironjump_srv_ip=$ironjump_srv_ip" ./CONFIG.FILE
+        sed -i "4i ironjump_srv_ip=$ironjump_srv_ip" ./ironjump-ssh.conf
     fi
     clear
     if [[ ! -d /root/.ssh ]]; then mkdir /root/.ssh; chmod 0700 /root/.ssh; fi
