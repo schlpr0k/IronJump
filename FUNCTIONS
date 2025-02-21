@@ -8,7 +8,7 @@ ast_reboot() {
 prompt_reboot() {
     read -p "(C)ontinue or (R)eturn: " prompt_response
     case "$prompt_response" in
-        C|c) echo -e "\r\n\tRebooting server in 10 seconds... Press Ctrl+C to halt reboot." ; shutdown -r now ; exit 0 ;;
+        C|c) echo -e "\r\n\tRebooting server NOW" ; shutdown -r now ; exit 0 ;;
         R|r) echo -e "\r\nReturning to Main Menu..." ; sleep 1 ; main_menu ;;
         *) invalid_choice ; prompt_reboot ;;
     esac
@@ -19,7 +19,6 @@ invalid_choice() {
     sleep 2
     return 0
 }
-
 
 ## IRONJUMP FUNCTIONS
 f_ssh_hard_os_selection() {
@@ -521,7 +520,7 @@ f_os_identity() {
     echo -e "## OS Name:\t$OS_NAME"
     echo -e "## OS Vers:\t$OS_VERSION"
     echo -e "## Package Mgr:\t$PKG_MANAGER"
-    while read -r i; do echo -e "## IP Address:\t$i\r\n"; done < <(ip a |grep "inet " |grep -v "127.0.0.1" | awk '{print $2,$NF}')
+    while read -r i; do echo -e "## IP Address:\t$i\r\n"; done < <(ip -4 -br a show scope global | awk '{print $3,$1}')
 }
 
 f_make_setup() {
@@ -1305,7 +1304,7 @@ ep_force_sync(){
 
 ep_smelt_device() {
     clear
-    echo "System Meltdown: Execution of Leathal Termination (S.M.E.L.T.)"
+    echo "System Meltdown: Execution of Lethal Termination (S.M.E.L.T.)"
     nav_top_bar
     echo "THIS IS COMPLETE, BUT FOR DEVELOPMENT IS NOT INCLUDED ON THIS SYSTEM'S CODE."
     read -p "Function Good" continue
