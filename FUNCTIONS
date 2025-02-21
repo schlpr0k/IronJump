@@ -520,7 +520,7 @@ f_os_identity() {
     echo -e "## OS Name:\t$OS_NAME"
     echo -e "## OS Vers:\t$OS_VERSION"
     echo -e "## Package Mgr:\t$PKG_MANAGER"
-    while read -r i; do echo -e "## IP Address:\t$i\r\n"; done < <(ip a |grep "inet " |grep -v "127.0.0.1" | awk '{print $2,$NF}')
+    while read -r i; do echo -e "## IP Address:\t$i\r\n"; done < <(ip -4 -br a show scope global | awk '{print $3,$1}')
 }
 
 f_make_setup() {
