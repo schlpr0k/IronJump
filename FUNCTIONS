@@ -1304,7 +1304,7 @@ ep_force_sync(){
 
 ep_smelt_device() {
     clear
-    echo "System Meltdown: Execution of Leathal Termination (S.M.E.L.T.)"
+    echo "System Meltdown: Execution of Lethal Termination (S.M.E.L.T.)"
     nav_top_bar
     echo "THIS IS COMPLETE, BUT FOR DEVELOPMENT IS NOT INCLUDED ON THIS SYSTEM'S CODE."
     read -p "Function Good" continue
