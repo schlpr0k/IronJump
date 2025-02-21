@@ -8,7 +8,7 @@ ast_reboot() {
 prompt_reboot() {
     read -p "(C)ontinue or (R)eturn: " prompt_response
     case "$prompt_response" in
-        C|c) echo -e "\r\n\tRebooting server in 10 seconds... Press Ctrl+C to halt reboot." ; shutdown -r now ; exit 0 ;;
+        C|c) echo -e "\r\n\tRebooting server NOW" ; shutdown -r now ; exit 0 ;;
         R|r) echo -e "\r\nReturning to Main Menu..." ; sleep 1 ; main_menu ;;
         *) invalid_choice ; prompt_reboot ;;
     esac
@@ -19,7 +19,6 @@ invalid_choice() {
     sleep 2
     return 0
 }
-
 
 ## IRONJUMP FUNCTIONS
 f_ssh_hard_os_selection() {
