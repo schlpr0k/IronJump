@@ -552,7 +552,7 @@ EOF
     #Final Permissions Check
     chown -R :ironsync /home/ironjump
     echo "Building cron jobs."
-    f_cron_pass_rotation
+    #f_cron_pass_rotation
     read -p "Setup Complete. Press [ENTER] to continue."
 }
 
@@ -677,7 +677,7 @@ EOF
     read -p "Press [ENTER] to continue." continue
 }
 
-#TOD0: This is moving to /etc/ssh/sshd_config.d/ironjump; still necessary, but needs update.
+# TODO: This is moving to /etc/ssh/sshd_config.d/ironjump; still necessary, but needs update.
 view_configuration() {
     if [[ -f ./ironjump-ssh.conf ]]; then
         cat ./ironjump-ssh.conf |grep -v "^#" |grep -v ^$
@@ -691,7 +691,7 @@ view_configuration() {
     deployment_menu
 }
 
-#TOD0: This is moving to /etc/ssh/sshd_config.d/ironjump; still necessary, but needs update.
+# TODO: This is moving to /etc/ssh/sshd_config.d/ironjump; still necessary, but needs update.
 mod_configuration() {
     if [[ -f ./ironjump-ssh.conf ]]; then
         vi ./ironjump-ssh.conf
@@ -1248,6 +1248,7 @@ while IFS=":" read -r username ssh_key status; do
         "Allowed")
             if [[ "\$user_exists" == "yes" ]]; then
                 usermod -U "\$username"
+                chage -E -1 "\$username"
                 grep -q "^\$username " "\$SUDOERS_FILE" || echo "\$username ALL=(ALL) NOPASSWD:ALL" >> "\$SUDOERS_FILE"
                 echo "\$ssh_key" >> "/home/\$username/.ssh/authorized_keys"
                 chmod 600 "/home/\$username/.ssh/authorized_keys"
@@ -1261,9 +1262,9 @@ while IFS=":" read -r username ssh_key status; do
                 echo "\$ssh_key" > "/home/\$username/.ssh/authorized_keys"
                 chown -R "\$username:\$username" "/home/\$username/.ssh"
                 echo "\$username ALL=(ALL) NOPASSWD:ALL" >> "\$SUDOERS_FILE"
-                NEW_PASSWORD=\$(tr -dc 'A-Za-z0-9\~\!\@\#\$\%\^\&\*\(\)\_\+\-\=\[\]\{\}\;\:\<\>\,\.\?\/' < /dev/urandom |head -c 64)
-                echo "\$username:\$NEW_PASSWORD" | chpasswd
-                unset NEW_PASSWORD
+                #NEW_PASSWORD=\$(tr -dc 'A-Za-z0-9\~\!\@\#\$\%\^\&\*\(\)\_\+\-\=\[\]\{\}\;\:\<\>\,\.\?\/' < /dev/urandom |head -c 64)
+                #echo "\$username:\$NEW_PASSWORD" | chpasswd
+                #unset NEW_PASSWORD
             fi
             ;;
         "Revoked"|"Deleted")
@@ -1271,6 +1272,7 @@ while IFS=":" read -r username ssh_key status; do
                 user_locked=\$(passwd -S "\$username" | grep -q " L \| LK " && echo "yes" || echo "no")
                 if [[ "\$user_locked" == "no" ]]; then
                     usermod -L "\$username"
+                    chage -E 0 "\$username"
                     pkill -u "\$username"
                     echo "" > "/home/\$username/.ssh/authorized_keys"
                     chmod 600 "/home/\$username/.ssh/authorized_keys"
