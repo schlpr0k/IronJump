@@ -597,6 +597,18 @@ f_sshd_setup() {
     echo "SSH setup complete!"
 }
 
+f_diceware_setup(){
+    # Check if Diceware is installed
+    case "$PKG_MANAGER" in
+        "apt") apt install -y diceware ;;
+        "yum") yum install -y diceware ;;
+        "dnf") dnf install -y diceware ;;
+        "pacman") pacman -Syu --noconfirm python-diceware ;;
+        "pkg_add") pkg_add diceware ;;
+        *) echo "Package manager not recognized. Cannot install Diceware."; return 1 ;;
+    esac
+}
+
 f_cron_setup() {
     # Check if cron is installed
     if ! command -v crond &> /dev/null && ! command -v cron &> /dev/null; then
@@ -938,6 +950,7 @@ dev_mgmt_new() {
     echo -e "Creating account for new Endpoint deployment...\n"
     while [[ -z $ep_new_comment ]]; do
         read -p "Endpoint comment/description (Ex. Location, Environment, Client):  " ep_new_comment
+    done
     local ep_base="ingot-"
     local ep_num=$(ls -al /home/ironjump/endpoints/chroot |awk '{print $9}' |grep -v "^\\.\|^$" |tail -n 1 |tr -d $ep_base)
     if [[ -z $ep_num ]]; then
@@ -966,8 +979,12 @@ dev_mgmt_new() {
     mv $dev_new_set_sshdir/ironjump_key.pub $dev_new_set_sshdir/authorized_keys
     #Add to Group ingot_registry
     usermod  -aG ingot_registry "$ep_account_name"
-    #Generate First Time Password XXXX-XXXX-XXXX
-    local token=$(cat /dev/urandom | tr -dc 'ACH-J-NP-Z2-79' | fold -w4 | head -n3 | paste -sd'-' -)
+    #Generate One Time Password XXXX-XXXX-XXXX
+    if [[ ! -z $(which diceware) ]]; then
+        local token=$(diceware -n 3 -d "::" -r system)
+    else
+        local token=$(cat /dev/urandom | tr -dc 'A-Z2-79' | fold -w4 | head -n3 | paste -sd'-' -)
+    fi
     echo $ep_account_name:$token | chpasswd
     #Create ingot-registration.sh, access_control, and ingot-keys files
     touch $dev_new_set_homedir/access_control
