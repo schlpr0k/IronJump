@@ -966,7 +966,7 @@ dev_mgmt_new() {
     mv $dev_new_set_sshdir/ironjump_key.pub $dev_new_set_sshdir/authorized_keys
     #Add to Group ingot_registry
     usermod  -aG ingot_registry "$ep_account_name"
-    #Generate Access Token / First Time Password XXXX-XXXX-XXXX
+    #Generate First Time Password XXXX-XXXX-XXXX
     local token=$(cat /dev/urandom | tr -dc 'ACH-J-NP-Z2-79' | fold -w4 | head -n3 | paste -sd'-' -)
     echo $ep_account_name:$token | chpasswd
     #Create ingot-registration.sh, access_control, and ingot-keys files
@@ -1165,15 +1165,15 @@ ep_connect() {
     clear
     echo "IronJump SSH Management : Endpoint Registration Wizard"
     nav_top_bar
-    echo -e "INFO: This wizard will connect this endpoint to an\nIronJump Server. You will need the following to continue:\n    * The IronJump Server IP Address\n    * The endpoint account name\n    * The one-time access token\r\n"
+    echo -e "INFO: This wizard will connect this endpoint to an\nIronJump Server. You will need the following to continue:\n    * The IronJump Server IP Address\n    * The endpoint account name\n    * The one-time access password\r\n"
     nav_breaker_bar
     read -p "Press [ENTER] to continue" continue
     echo  -e "\r\n Collect Information for Registration\n"
     read -p "    What is the IronJump Server IP: " ironjump_srv_ip
     read -p "    What is this endpoint's name: " ironjump_ep_name
-    read -p "    Where you provided an SSH access token? (yes/no): " has_token
+    read -p "    Where you provided an SSH access password? (yes/no): " has_token
     case $has_token in
-        No|no|N|n) read -p "You cannot proceed without a token." ; ep_mgmt_menu ;;
+        No|no|N|n) read -p "You cannot proceed without a prassword." ; ep_mgmt_menu ;;
         Yes|yes|Y|y) sleep 1 ;;
         *) invalid_choice ; ep_mgmt_menu ;;
     esac
@@ -1185,7 +1185,7 @@ ep_connect() {
     nav_top_bar
     echo -e "INFO: This endpoint will attempt registration using\nthe following information:\n    IronJump Server:\t$ironjump_srv_ip\n    Username:\t\t$ironjump_ep_name\r\n"
     nav_breaker_bar
-    echo -e "When prompted, please use the access token for SSH.\n"
+    echo -e "When prompted, please use the one-time password for SSH.\n"
     read -p "Press [ENTER] to continue." continue
     #Sets environment variable IRONJUMP_SERVER or changes it every ep_connect registration execution.
     #Needed as environment variable for /bin/ironjump-connect.sh and /bin/ironjump-sync.sh
