@@ -1,5 +1,5 @@
 #!/bin/bash
-## NAVIGATION Functions
+## Navigation
 ast_reboot() {
     echo -e "\r\nAre you sure you want to reboot the server?"
     prompt_reboot
@@ -20,7 +20,134 @@ invalid_choice() {
     return 0
 }
 
-## IRONJUMP FUNCTIONS
+## OS Identification
+f_os_identity() {
+    #Detect OS and Version
+    if [[ -f /etc/os-release ]]; then
+        . /etc/os-release
+        OS_NAME=$ID
+        OS_VERSION=$VERSION_ID
+    elif [[ -f /etc/debian_version ]]; then
+        OS_NAME="debian"
+        OS_VERSION=$(cat /etc/debian_version)
+    elif [[ -f /etc/redhat-release ]]; then
+        OS_NAME="rhel"
+        OS_VERSION=$(grep -oE '[0-9]+' /etc/redhat-release | head -1)
+    elif [[ -f /etc/openbsd-version ]]; then
+        OS_NAME="openbsd"
+        OS_VERSION=$(uname -r)
+    else
+        OS_NAME="Unsupported/Undetermined"
+        OS_VERSION="Unsupported/Undetermined"
+        return 1
+    fi
+    #Determine package manager
+    case "$OS_NAME" in
+        "amzn") # Amazon Linux
+            if [[ "$OS_VERSION" == "2" || "$OS_VERSION" == "2023" ]]; then
+                PKG_MANAGER="yum"
+            fi
+            ;;
+        "ubuntu"|"linuxmint") # Ubuntu, Mint
+            if [[ "$OS_VERSION" =~ ^(14.04|16.04|18.04|20.04|22.04|24.04)$ ]]; then
+                PKG_MANAGER="apt"
+            fi
+            ;;
+        "debian") # Debian 10, 11, 12
+            if [[ "$OS_VERSION" =~ ^(10|11|12)$ ]]; then
+                PKG_MANAGER="apt"
+            fi
+            ;;
+        "kali") # Kali Linux
+            PKG_MANAGER="apt"
+            ;;
+        "parrot"|"parrotsec") # Parrot OS / ParrotSec OS
+            PKG_MANAGER="apt"
+            ;;
+        "arch"|"blackarch") # Arch Linux / BlackArch
+            PKG_MANAGER="pacman"
+            ;;
+        "rocky") # Rocky Linux 9
+            if [[ "$OS_VERSION" == "9" ]]; then
+                PKG_MANAGER="dnf"
+            fi
+            ;;
+        "rhel"|"centos") # RHEL 7, 8, CentOS
+            if [[ "$OS_VERSION" == "7" ]]; then
+                PKG_MANAGER="yum"
+            elif [[ "$OS_VERSION" == "8" ]]; then
+                PKG_MANAGER="dnf"
+            fi
+            ;;
+        "pfsense") # pfSense (FreeBSD-based)
+            PKG_MANAGER="pkg"
+            ;;
+        "openbsd") # OpenBSD 6.2 or higher
+            if (( $(echo "$OS_VERSION >= 6.2" | bc -l) )); then
+                PKG_MANAGER="pkg_add"
+            fi
+            ;;
+        "raspbian"|"raspberrypi") # Raspberry Pi OS
+            PKG_MANAGER="apt"
+            ;;
+        *)
+            echo "Unsupported OS: $OS_NAME $OS_VERSION"
+            return 1
+            ;;
+    esac
+    echo -e "## Hostname:\t$HOSTNAME"
+    echo -e "## OS Name:\t$OS_NAME"
+    echo -e "## OS Vers:\t$OS_VERSION"
+    echo -e "## Package Mgr:\t$PKG_MANAGER"
+    while read -r i; do echo -e "## IP Address:\t$i\r\n"; done < <(ip -4 -br a show scope global | awk '{print $3,$1}')
+}
+
+## Account Enumeration
+list_accounts(){
+    for account in $(getent passwd |grep "/home/ironjump/$1"|awk -F: '{print $1}'); do
+    exp_date=$(sudo chage -l "$account" | grep -i "account expires" | awk '{print $NF}')
+    if [[ "$exp_date" != "never" && "$exp_date" < "$(date +%Y-%m-%d)" ]]; then
+        echo -e "(Disabled)\t$account\t$(getent passwd |grep $account |awk -F: '{print $5}')"
+    else
+        echo -e "(Enabled)\t$account\t$(getent passwd |grep $account |awk -F: '{print $5}')"
+    fi
+    done
+}
+
+list_users(){
+    if [[ -z $1 ]]; then
+        list_accounts users
+    elif [[ $1 == "disabled" ]]; then
+        list_accounts users |grep Disabled
+    elif [[ $1 == "enabled" ]]; then
+        list_accounts users |grep Enabled
+    fi
+}
+
+list_endpoints(){
+    if [[ -z $1 ]]; then
+        list_accounts endpoints
+    elif [[ $1 == "disabled" ]]; then
+        list_accounts endpoints |grep Disabled
+    elif [[ $1 == "enabled" ]]; then
+        list_accounts endpoints |grep Enabled
+    fi
+}
+
+## SSH Hardening
+f_sshd_restart(){
+    #Restart SSH Daemon
+    echo "Restarting SSH Daemon"
+    case "$PKG_MANAGER" in
+        "apt"|"dnf"|"yum"|"pacman")
+            systemctl restart ssh 2>/dev/null || systemctl restart sshd
+            ;;
+        "pkg") service sshd start ;;
+        "pkg_add") rcctl start sshd ;;
+        *) echo "Service management not recognized."; return 1 ;;
+    esac
+}
+
 f_ssh_hard_os_selection() {
     clear
     echo "Select the operating system to perform SSH hardening..."
@@ -308,20 +435,7 @@ f_ssh_hard_s17() {
     kill -HUP `cat /var/run/sshd.pid`
 }
 
-f_sshd_restart(){
-    #Restart SSH Daemon
-    echo "Restarting SSH Daemon"
-    case "$PKG_MANAGER" in
-        "apt"|"dnf"|"yum"|"pacman")
-            systemctl restart ssh 2>/dev/null || systemctl restart sshd
-            ;;
-        "pkg") service sshd start ;;
-        "pkg_add") rcctl start sshd ;;
-        *) echo "Service management not recognized."; return 1 ;;
-    esac
-}
-
-#Setup IronJump Bastion Functions
+## Deploy IronJump Root Server
 f_setup_ironjump() {
     f_sshd_setup
     harden_ssh_service
@@ -442,87 +556,7 @@ EOF
     read -p "Setup Complete. Press [ENTER] to continue."
 }
 
-f_os_identity() {
-    #Detect OS and Version
-    if [[ -f /etc/os-release ]]; then
-        . /etc/os-release
-        OS_NAME=$ID
-        OS_VERSION=$VERSION_ID
-    elif [[ -f /etc/debian_version ]]; then
-        OS_NAME="debian"
-        OS_VERSION=$(cat /etc/debian_version)
-    elif [[ -f /etc/redhat-release ]]; then
-        OS_NAME="rhel"
-        OS_VERSION=$(grep -oE '[0-9]+' /etc/redhat-release | head -1)
-    elif [[ -f /etc/openbsd-version ]]; then
-        OS_NAME="openbsd"
-        OS_VERSION=$(uname -r)
-    else
-        OS_NAME="Unsupported/Undetermined"
-        OS_VERSION="Unsupported/Undetermined"
-        return 1
-    fi
-    #Determine package manager
-    case "$OS_NAME" in
-        "amzn") # Amazon Linux
-            if [[ "$OS_VERSION" == "2" || "$OS_VERSION" == "2023" ]]; then
-                PKG_MANAGER="yum"
-            fi
-            ;;
-        "ubuntu"|"linuxmint") # Ubuntu, Mint
-            if [[ "$OS_VERSION" =~ ^(14.04|16.04|18.04|20.04|22.04|24.04)$ ]]; then
-                PKG_MANAGER="apt"
-            fi
-            ;;
-        "debian") # Debian 10, 11, 12
-            if [[ "$OS_VERSION" =~ ^(10|11|12)$ ]]; then
-                PKG_MANAGER="apt"
-            fi
-            ;;
-        "kali") # Kali Linux
-            PKG_MANAGER="apt"
-            ;;
-        "parrot"|"parrotsec") # Parrot OS / ParrotSec OS
-            PKG_MANAGER="apt"
-            ;;
-        "arch"|"blackarch") # Arch Linux / BlackArch
-            PKG_MANAGER="pacman"
-            ;;
-        "rocky") # Rocky Linux 9
-            if [[ "$OS_VERSION" == "9" ]]; then
-                PKG_MANAGER="dnf"
-            fi
-            ;;
-        "rhel"|"centos") # RHEL 7, 8, CentOS
-            if [[ "$OS_VERSION" == "7" ]]; then
-                PKG_MANAGER="yum"
-            elif [[ "$OS_VERSION" == "8" ]]; then
-                PKG_MANAGER="dnf"
-            fi
-            ;;
-        "pfsense") # pfSense (FreeBSD-based)
-            PKG_MANAGER="pkg"
-            ;;
-        "openbsd") # OpenBSD 6.2 or higher
-            if (( $(echo "$OS_VERSION >= 6.2" | bc -l) )); then
-                PKG_MANAGER="pkg_add"
-            fi
-            ;;
-        "raspbian"|"raspberrypi") # Raspberry Pi OS
-            PKG_MANAGER="apt"
-            ;;
-        *)
-            echo "Unsupported OS: $OS_NAME $OS_VERSION"
-            return 1
-            ;;
-    esac
-    echo -e "## Hostname:\t$HOSTNAME"
-    echo -e "## OS Name:\t$OS_NAME"
-    echo -e "## OS Vers:\t$OS_VERSION"
-    echo -e "## Package Mgr:\t$PKG_MANAGER"
-    while read -r i; do echo -e "## IP Address:\t$i\r\n"; done < <(ip -4 -br a show scope global | awk '{print $3,$1}')
-}
-
+## Install Dependencies
 f_make_setup() {
     # Check if make utility is installed. Required for AutoSSH.
     case "$PKG_MANAGER" in
@@ -643,6 +677,7 @@ EOF
     read -p "Press [ENTER] to continue." continue
 }
 
+#TOD0: This is moving to /etc/ssh/sshd_config.d/ironjump; still necessary, but needs update.
 view_configuration() {
     if [[ -f ./ironjump-ssh.conf ]]; then
         cat ./ironjump-ssh.conf |grep -v "^#" |grep -v ^$
@@ -656,6 +691,7 @@ view_configuration() {
     deployment_menu
 }
 
+#TOD0: This is moving to /etc/ssh/sshd_config.d/ironjump; still necessary, but needs update.
 mod_configuration() {
     if [[ -f ./ironjump-ssh.conf ]]; then
         vi ./ironjump-ssh.conf
@@ -673,7 +709,11 @@ harden_ssh_service() {
 }
 
 usr_mgmt_list() {
-    cat /etc/passwd |sort |while IFS=: read -r username password uid gid comment home shell; do if [[ $(echo $home |grep "/home/ironjump/users" |wc -l) -eq 1 ]]; then u_stat=$(passwd -S $username |awk '{print $2}'); if [[ $(echo $u_stat) == "P" || $(echo $u_stat) == "PS" ]]; then echo -e "$username :: Public Key - $(cat $home/.ssh/authorized_keys) :: (Enabled)"; else echo "$username :: Public Key - $(cat $home/.ssh/authorized_keys) :: (Disabled)"; fi; fi; done |more
+    clear
+    echo "IronJump SSH Management - All Users"
+    nav_top_bar
+    list_users
+    nav_breaker_bar
     read -p "Press [ENTER] to return to the menu." continue
     root_server_user_acct_mgmt_menu
 }
@@ -715,41 +755,42 @@ usr_mgmt_new() {
             ;;
         *) invalid_choice; usr_mgmt_new ;;
     esac
-    NEW_PASSWORD=$(tr -dc 'A-Za-z0-9\~\!\@\#\$\%\^\&\*\(\)\_\+\-\=\[\]\{\}\;\:\<\>\,\.\?\/' < /dev/urandom |head -c 64)
-    echo $usr_new_set_name:$NEW_PASSWORD | chpasswd
-    unset NEW_PASSWORD
     echo "New user account for $usr_new_set_name created."
     echo -e "\r\n--------------------------------------------------------"
     read -p "Press [ENTER] to continue." continue
     root_server_user_acct_mgmt_menu
 }
 
+local_account_check(){
+    if [[ -z $(passwd -S $2 2>/dev/null) ]]; then
+        read -p "Account not found. Press [Enter] to return to the Root Server Management Menu." continue
+        root_server_mgmt_menu
+    elif [[ ! -d /home/ironjump/$1/chroot/$2 ]]; then
+        read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to Root Server Management Menu." continue
+        root_server_mgmt_menu
+   fi
+}
+
 usr_mgmt_enable() {
     clear
     echo "IronJump SSH Management - Enable User Account Wizard"
     nav_top_bar
-    echo -e "\n"
+    list_users disabled
+    nav_breaker_bar
     read -p "Enter a username to enable: " usr_set_enable_name
-    if [[ $(cat /etc/passwd |grep $usr_set_enable_name |wc -l) -eq 0 ]]; then
-        read -p "Username not found. Press [Enter] to return to the User Account Management Menu." continue
-        root_server_user_acct_mgmt_menu
-    elif [[ ! -d /home/ironjump/users/chroot/$usr_set_enable_name ]]; then
-        read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to Account Management Menu." continue
-        root_server_user_acct_mgmt_menu
-    else
-        u_stat=$(passwd -S $usr_set_enable_name |awk '{print $2}')
-        if [[ $(echo $u_stat) == "P" || $(echo $u_stat) == "PS" ]]; then
-            echo -e "$usr_set_enable_name is already enabled."
-            nav_breaker_bar
-            read -p "Press [ENTER] to return to the User Account Management Menu." continue
-            root_server_user_acct_mgmt_menu; 
-        fi
+    local_account_check users $usr_set_enable_name
+    if [[ $(list_users enabled |grep "$usr_set_enable_name" |awk '{print $1}') == "(Enabled)" ]]; then
+        echo -e "$usr_set_enable_name is already enabled."
+        nav_breaker_bar
+        read -p "Press [ENTER] to return to the User Account Management Menu." continue
+        root_server_user_acct_mgmt_menu;
     fi
     read -p "Are you sure you want to enable $usr_set_enable_name? Type [CONFIRM]: " choice
     if [[ $(echo $choice | tr [[:upper:]] [[:lower:]]) == "confirm" ]]; then
+        usermod -U $usr_set_enable_name
+        chage -E -1 $usr_set_enable_name
         sed -i 's/^#//' /home/ironjump/users/chroot/$usr_set_enable_name/.ssh/authorized_keys
-        usermod -U $usr_set_enable_name &>/dev/null
-        echo "User $usr_set_enable_name is now enabled!"
+        echo -e "\nUser $usr_set_enable_name is now enabled!"
         echo -e "\r\n--------------------------------------------------------"
         read -p "Press [ENTER] to continue." continue
         root_server_user_acct_mgmt_menu
@@ -763,29 +804,22 @@ usr_mgmt_disable() {
     clear
     echo "IronJump SSH Management - Disable User Account Wizard"
     nav_top_bar
-    echo -e "\n"
+    list_users enabled
+    nav_breaker_bar
     read -p "Enter a username to disable: " usr_set_disable_name
-    if [[ $(cat /etc/passwd |grep $usr_set_disable_name |wc -l) -eq 0 ]]; then
-        read -p "Username not found. Press [Enter] to return to the User Account Management Menu." continue
-        root_server_user_acct_mgmt_menu
-    elif [[ ! -d /home/ironjump/users/chroot/$usr_set_disable_name ]]; then
-        read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to User Account Management Menu." continue
-        root_server_user_acct_mgmt_menu
-    else
-        u_stat=$(passwd -S $usr_set_disable_name |awk '{print $2}')
-        if [[ $(echo $u_stat) == "L" || $(echo $u_stat) == "LK" ]]; then
-            echo -e "$usr_set_disable_name is already disabled."
-            nav_breaker_bar
-            read -p "Press [ENTER] to return to the User Account Management Menu." continue
-            root_server_user_acct_mgmt_menu; 
-        fi
+    local_account_check users $usr_set_disable_name
+    if [[ $(list_users disabled |grep "$usr_set_disable_name" |awk '{print $1}') == "(Disable)" ]]; then
+        echo -e "$usr_set_disable_name is already disabled."
+        nav_breaker_bar
+        read -p "Press [ENTER] to return to the User Account Management Menu." continue
+        root_server_user_acct_mgmt_menu;
     fi
     read -p "Are you sure you want to disable $usr_set_disable_name? Type [CONFIRM]: " choice
     if [[ $(echo $choice | tr [[:upper:]] [[:lower:]]) == "confirm" ]]; then
-        sed -i 's/^/#/' /home/ironjump/users/chroot/$usr_set_disable_name/.ssh/authorized_keys
-        usermod -L $usr_set_disable_name &>/dev/null
-        pkill -u $usr_set_disable_name
-        echo "User $usr_set_disable_name is now disabled!"
+        usermod -L $usr_set_disable_name
+        chage -E 0 $usr_set_disable_name
+        sed -i 's/^#//' /home/ironjump/users/chroot/$usr_set_disable_name/.ssh/authorized_keys
+        echo -e "\nUser $usr_set_enable_name is now disabled!"
         echo -e "\r\n--------------------------------------------------------"
         read -p "Press [ENTER] to continue." continue
         root_server_user_acct_mgmt_menu
@@ -799,25 +833,21 @@ usr_mgmt_delete() {
     clear
     echo "IronJump SSH Management - Delete User Account Wizard"
     nav_top_bar
-    echo -e "\n"
+    list_users
+    nav_breaker_bar
     read -p "Enter a username to delete: " usr_set_delete_name
-    if [[ $(cat /etc/passwd |grep $usr_set_delete_name |wc -l) -eq 0 ]]; then
-        read -p "Username not found. Press [Enter] to return to the Account Management Menu." continue
-        root_server_user_acct_mgmt_menu
-    elif [[ ! -d /home/ironjump/users/chroot/$usr_set_delete_name ]]; then
-        read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to Account Management Menu." continue
-        root_server_user_acct_mgmt_menu
-    fi
+    local_account_check users $usr_set_delete_name
     read -p "Are you sure you want to delete $usr_set_delete_name? Type [CONFIRM]: " choice
     if [[ $(echo $choice | tr [[:upper:]] [[:lower:]]) == "confirm" ]]; then
         sed -i 's/^/#/' /home/ironjump/users/chroot/$usr_set_delete_name/.ssh/authorized_keys
         userdel -r $usr_set_delete_name &>/dev/null
         pkill -u $usr_set_delete_name
         echo "User $usr_set_delete_name has been deleted!"
-        echo -e "\r\n--------------------------------------------------------"
+        nav_breaker_bar
         read -p "Press [ENTER] to continue." continue
         root_server_user_acct_mgmt_menu
     else
+        nav_breaker_bar
         read -p "Confirmation not given. Press [ENTER] to return to the User Account Menu." continue
         root_server_user_acct_mgmt_menu
     fi
@@ -827,40 +857,37 @@ usr_mgmt_mod_pubkey() {
     clear
     echo "IronJump SSH Management - User Account Public Key Update Wizard"
     nav_top_bar
-    echo -e "\n"
+    list_users
+    nav_breaker_bar
     read -p "Enter a username to modify their SSH Public Key: " usr_set_update_pubkey_name
-    if [[ $(cat /etc/passwd |grep $usr_set_update_pubkey_name |wc -l) -eq 0 ]]; then
-        read -p "Username not found. Press [Enter] to return to the Account Management Menu." continue
-        root_server_user_acct_mgmt_menu
-    elif [[ ! -d /home/ironjump/users/chroot/$usr_set_update_pubkey_name ]]; then
-        read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to Account Management Menu." continue
+    local_account_check users $usr_set_update_pubkey_name
+    read -p "   --> New SSH Pubkey {key_type key}: " usr_set_update_pubkey_key
+    if [[ ! "$usr_set_update_pubkey_key" =~ ^ssh-ed25519 ]] && [[ ! "$usr_set_update_pubkey_key" =~ ^ssh-rsa ]]; then
+        echo "SSH Pubkeys must be ed25519 (recommended) or RSA. Aborting modification."
+        nav_breaker_bar
+        read -p "Press [ENTER] to continue. Returning to User Account Menu" continue
         root_server_user_acct_mgmt_menu
     else
-        read -p "   --> New SSH Pubkey {key_type key}: " usr_set_update_pubkey_key
-        if [[ ! "$usr_set_update_pubkey_key" =~ ^ssh-ed25519 ]] && [[ ! "$usr_set_update_pubkey_key" =~ ^ssh-rsa ]]; then
-            echo "SSH Pubkey must be ed25519 (recommended) or RSA. Aborting user creation."
-            echo -e "\r\n--------------------------------------------------------"
-            read -p "Press [ENTER] to continue. Returning to User Account Menu" continue
-            root_server_user_acct_mgmt_menu
-        else
-            key_type=$(echo $usr_set_update_pubkey_key | awk '{print $1}')
-            key=$(echo $usr_set_update_pubkey_key | awk '{print $2}')
-            ssh_key=$(echo $key_type $key $usr_set_update_pubkey_name)
-        fi
-    echo -e "\r\nUpdating SSH Public Key for: \r\n\tUsername: $usr_set_update_pubkey_name \r\n\tPublic SSH Key: $ssh_key"
-    echo -e "\r\n--------------------------------------------------------"
-    read -p "Press [C] to confirm or [A] to abort: " choice
-    case "$choice" in
-        A|a) root_server_user_acct_mgmt_menu ;;
-        C|c)
-            echo $ssh_key > /home/ironjump/users/chroot/$usr_set_update_pubkey_name/.ssh/authorized_keys
-            chown $usr_set_update_pubkey_name:$usr_set_update_pubkey_name /home/ironjump/users/chroot/$usr_set_update_pubkey_name/.ssh/authorized_keys
-            chmod 0600 /home/ironjump/users/chroot/$usr_set_update_pubkey_name/.ssh/authorized_keys
-            access_control_path="/home/ironjump/endpoints/chroot/*/access_control"
-            sed -i -E "s|^($usr_set_update_pubkey_name):[^:]+ ([^:]+):|\1:$ssh_key:|" $access_control_path
-            ;;
-        *) invalid_choice; root_server_acct_mgmt_menu ;;
-    esac
+        key_type=$(echo $usr_set_update_pubkey_key | awk '{print $1}')
+        key=$(echo $usr_set_update_pubkey_key | awk '{print $2}')
+        ssh_key=$(echo $key_type $key $usr_set_update_pubkey_name)
+    fi
+    read -p "Are you sure you want to change $usr_set_delete_name's public key? Type [CONFIRM]: " choice
+    if [[ $(echo $choice | tr [[:upper:]] [[:lower:]]) == "confirm" ]]; then
+        echo -e "\r\nUpdating SSH Public Key for: \r\n\tUsername: $usr_set_update_pubkey_name \r\n\tPublic SSH Key: $ssh_key"
+        echo $ssh_key > /home/ironjump/users/chroot/$usr_set_update_pubkey_name/.ssh/authorized_keys
+        chown $usr_set_update_pubkey_name:$usr_set_update_pubkey_name /home/ironjump/users/chroot/$usr_set_update_pubkey_name/.ssh/authorized_keys
+        chmod 0600 /home/ironjump/users/chroot/$usr_set_update_pubkey_name/.ssh/authorized_keys
+        access_control_path="/home/ironjump/endpoints/chroot/*/access_control"
+        sed -i -E "s|^($usr_set_update_pubkey_name):[^:]+ ([^:]+):|\1:$ssh_key:|" $access_control_path
+        echo -e "\nUser $usr_set_enable_name's public key has been modified!"
+        nav_breaker_bar
+        read -p "Press [ENTER] to continue. Returning to User Account Menu" continue
+        root_server_user_acct_mgmt_menu
+    else
+        nav_breaker_bar
+        read -p "Confirmation not given. Press [ENTER] to return to the User Account Menu." continue
+        root_server_user_acct_mgmt_menu
     fi
     root_server_user_acct_mgmt_menu
 }
@@ -869,59 +896,48 @@ usr_mgmt_set_expire() {
     clear
     echo "IronJump SSH Management - Expire User Account Wizard"
     nav_top_bar
-    echo -e "\n"
+    list_users
+    nav_breaker_bar
     read -p "Enter a username to set an expiration date: " usr_set_expire_name
-    if [[ $(cat /etc/passwd |grep $usr_set_expire_name |wc -l) -eq 0 ]]; then
-        read -p "Username not found. Press [Enter] to return to the Account Management Menu." continue
-        root_server_user_acct_mgmt_menu
-    fi
-    if [[ ! -d /home/ironjump/users/chroot/$usr_set_expire_name ]]; then
-        read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to Account Management Menu." continue
+    local_account_check users $usr_set_expire_name
+    echo -e "To set or unset an expiration to a specify date:"
+    echo -e "\t   never: Disable Expiration"
+    echo -e "\t   YYYY-MM-DD: Specific date (ex. '2025-12-31' is December 31, 2025)\n"
+    read -p "Please specify \"never\" or set a specific date: " usr_set_expire_date
+    if [[ "$usr_set_expire_date" == "never" ]]; then
+        chage -E -1 $usr_set_expire_name
+        echo -e "\nUser $usr_set_expire_name is set to never expire."
+        nav_breaker_bar
+        read -p "Press [ENTER] to continue." continue
         root_server_user_acct_mgmt_menu
     else
-        echo -e "To set an expiration, specify the number of days as:\r\n\t   -1: Never Expire, or\r\n\t1-999: Number of days from now\r\n"
-        read -p "In how many days from today would you like the account to expire? " usr_set_expire_days
-        usr_set_expire=$(echo $usr_set_expire_days |tr -d "+")
-        if [[ "$usr_set_expire_days" == "-1" ]]; then
-            chage -E -1 $usr_set_expire_name
-            echo "User $usr_set_expire_name is set to never expire."
-            echo -e "\r\n--------------------------------------------------------"
-            read -p "Press [ENTER] to continue." continue
-            root_server_user_acct_mgmt_menu
-        elif [[ "$usr_set_expire_days" =~ ^[0-9]+$ ]] && [[ "$usr_set_expire_days" -gt 0 ]]; then
-            chage -E $(date -d "+$usr_set_expire_days days" +%Y-%m-%d) $usr_set_expire_name
-            echo "User $usr_set_expire_name account will expire in $usr_set_expire_days days."
-            echo -e "\r\n--------------------------------------------------------"
-            read -p "Press [ENTER] to continue." continue
-            root_server_user_acct_mgmt_menu
-        else
-            echo "Invalid number of days specified. Only the number 1-999 or -1 can be used."
-            read -p "Press [ENTER] to try again." continue
-            usr_mgmt_set_expire
-        fi
+        validate_date user $usr_set_expire_date
+        chage -E $usr_set_expire_date $usr_set_expire_name
+        echo -e "\nThe account $usr_set_expire_name will expire on $usr_set_expire_date."
+        nav_breaker_bar
+        read -p "Press [ENTER] to continue." continue
+        root_server_user_acct_mgmt_menu
     fi
 }
 
 #dev_acct_mgmt_menu
 dev_mgmt_list() {
-    echo -e "\r\nEndpoint Accounts"
-    echo "================="
-    local EP_ACCTS=$(ls -al /home/ironjump/endpoints/chroot |awk '{print $9}' |grep -v "^\\.\|^$")
-    if [[ -z $EP_ACCTS ]]; then
-        echo "No Endpoint Accounts Exist."
-    else
-        echo $EP_ACCTS
-    fi
-    echo -e "\r\n"
-    read -p "Press ENTER to return." choice
+    clear
+    echo "IronJump SSH Management - All Endpoints"
+    nav_top_bar
+    list_endpoints
+    nav_breaker_bar
+    read -p "Press [ENTER] to return to the menu." continue
+    root_server_endpoint_acct_mgmt_menu
 }
 
 dev_mgmt_new() {
     clear
     echo "IronJump SSH Management - New Endpoint Account Creation"
     nav_top_bar
-    echo "Creating account for new Endpoint deployment..."
-    read -p "Where will this endpoint be located? " ep_new_location
+    echo -e "Creating account for new Endpoint deployment...\n"
+    while [[ -z $ep_new_comment ]]; do
+        read -p "Endpoint comment/description (Ex. Location, Environment, Client):  " ep_new_comment
     local ep_base="ingot-"
     local ep_num=$(ls -al /home/ironjump/endpoints/chroot |awk '{print $9}' |grep -v "^\\.\|^$" |tail -n 1 |tr -d $ep_base)
     if [[ -z $ep_num ]]; then
@@ -936,7 +952,7 @@ dev_mgmt_new() {
     local dev_new_set_homedir="$IRONJUMP_CHROOT_ENV/endpoints/chroot/$ep_account_name"
     local dev_new_set_sshdir="$dev_new_set_homedir/.ssh"
     local dev_new_set_authorized_keys="$dev_new_set_sshdir/authorized_keys"
-    useradd -U -m -s $(which bash) -d $dev_new_set_homedir -c "$ep_new_location" -G ingot_registry $ep_account_name
+    useradd -U -m -s $(which bash) -d $dev_new_set_homedir -c "$ep_new_comment" -G ingot_registry $ep_account_name
     mkdir -p $dev_new_set_sshdir
     echo "$dev_new_set_pubkey" > $dev_new_set_authorized_keys
     chown -R $ep_account_name:$ep_account_name $dev_new_set_sshdir
@@ -991,186 +1007,161 @@ EOF
     nav_breaker_bar
     unset token
     read -p "Press ENTER to return." choice
+    root_server_endpoint_account_mgmt_menu
 }
 
 dev_mgmt_enable() {
     clear
     echo "IronJump SSH Management - Enable Endpoint Account Wizard"
     nav_top_bar
-    echo -e "\n"
-    read -p "Enter a device to enable: " dev_set_enable_name
-    if [[ $(cat /etc/passwd |grep $dev_set_enable_name |wc -l) -eq 0 ]]; then
-        read -p "Device not found. Press [Enter] to return to the Endpoint Device Account Management Menu." continue
-        root_server_endpoint_acct_mgmt_menu
-    elif [[ ! -d /home/ironjump/endpoints/chroot/$dev_set_enable_name ]]; then
-        read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to Endpoint Device Account Management Menu." continue
-        root_server_endpoint_acct_mgmt_menu
-    else
-        u_stat=$(passwd -S $dev_set_enable_name |awk '{print $2}')
-        if [[ $(echo $u_stat) == "P" || $(echo $u_stat) == "PS" ]]; then
-            echo -e "$dev_set_enable_name is already enabled."
-            nav_breaker_bar
-            read -p "Press [ENTER] to return to the Endpoint Device Account Management Menu." continue
-            root_server_endpoint_acct_mgmt_menu;
-        fi
+    list_endpoints disabled
+    nav_breaker_bar
+    read -p "Enter an endoint account to enable: " dev_set_enable_name
+    local_account_check endpoints $dev_set_enable_name
+    if [[ $(list_endpoints enabled |grep "$dev_set_enable_name" |awk '{print $1}') == "(Enabled)" ]]; then
+        echo -e "$dev_set_enable_name is already enabled."
+        nav_breaker_bar
+        read -p "Press [ENTER] to return to the Endpoitn Account Management Menu." continue
+        root_server_user_acct_mgmt_menu;
     fi
     read -p "Are you sure you want to enable $dev_set_enable_name? Type [CONFIRM]: " choice
     if [[ $(echo $choice | tr [[:upper:]] [[:lower:]]) == "confirm" ]]; then
-        usermod -U $dev_set_enable_name &>/dev/null
+        usermod -U $dev_set_enable_name
+        chage -E -1 $dev_set_enable_name
         sed -i 's/^#//' /home/ironjump/endpoints/chroot/$dev_set_enable_name/.ssh/authorized_keys
-        echo "Device $dev_set_enable_name is now enabled!"
-        echo "Reboot the endpoint device to re-establish connection to IronJump server. (May take up to 10 minutes)"
+        echo -e "\nUser $dev_set_enable_name is now enabled!"
         echo -e "\r\n--------------------------------------------------------"
         read -p "Press [ENTER] to continue." continue
         root_server_endpoint_acct_mgmt_menu
     else
-        read -p "Confirmation not given. Press [ENTER] to return to the Endpoint Device Account Management Menu." continue
+        read -p "Confirmation not given. Press [ENTER] to return to the Endpoint Account Management Menu." continue
         root_server_endpoint_acct_mgmt_menu
     fi
 }
 
 dev_mgmt_disable() {
     clear
-    echo "IronJump SSH Management - Disable Endpoint Device Account Wizard"
+    echo "IronJump SSH Management - Disable Endpoints Account Wizard"
     nav_top_bar
-    echo -e "\n"
-    read -p "Enter an endpoint device to disable: " dev_set_disable_name
-    if [[ $(cat /etc/passwd |grep $dev_set_disable_name |wc -l) -eq 0 ]]; then
-        read -p "Device not found. Press [Enter] to return to the Endpoint Device Account Management Menu." continue
-        root_server_endpoint_acct_mgmt_menu
-    elif [[ ! -d /home/ironjump/endpoints/chroot/$dev_set_disable_name ]]; then
-        read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to Endpoint Device Account Management Menu." continue
-        root_server_endpoint_acct_mgmt_menu
-    else
-        u_stat=$(passwd -S $dev_set_disable_name |awk '{print $2}')
-        if [[ $(echo $u_stat) == "L" || $(echo $u_stat) == "LK" ]]; then
-            echo -e "$dev_set_disable_name is already disabled."
-            nav_breaker_bar
-            read -p "Press [ENTER] to return to the Endpoint Device Account Management Menu." continue
-            root_server_endpoint_acct_mgmt_menu; 
-        fi
-    fi
+    list_endpoints enabled
+    nav_breaker_bar
+    read -p "Enter an endpoint account to disable: " dev_set_disable_name
+    local_account_check endpoints $dev_set_disable_name
+    if [[ $(list_endpoints disabled |grep "$dev_set_disable_name" |awk '{print $1}') == "(Disable)" ]]; then
+        echo -e "$dev_set_disable_name is already disabled."
+        nav_breaker_bar
+        read -p "Press [ENTER] to return to the Endpoint Account Management Menu." continue
+        root_server_endpoint_acct_mgmt_menu;
+	fi
     read -p "Are you sure you want to disable $dev_set_disable_name? Type [CONFIRM]: " choice
     if [[ $(echo $choice | tr [[:upper:]] [[:lower:]]) == "confirm" ]]; then
-        sed -i 's/^/#/' /home/ironjump/endpoints/chroot/$dev_set_disable_name/.ssh/authorized_keys
-        usermod -L $dev_set_disable_name &>/dev/null
-        pkill -u $dev_set_disable_name
-        echo "Endpoint device $dev_set_disable_name is now disabled!"
+        usermod -L $dev_set_disable_name
+        chage -E 0 $dev_set_disable_name
+        sed -i 's/^#//' /home/ironjump/endpoints/chroot/$dev_set_disable_name/.ssh/authorized_keys
+        echo -e "\nUser $dev_set_enable_name is now disabled!"
         echo -e "\r\n--------------------------------------------------------"
         read -p "Press [ENTER] to continue." continue
         root_server_endpoint_acct_mgmt_menu
     else
-        read -p "Confirmation not given. Press [ENTER] to return to the Endpoint Device Account Management Menu." continue
+        read -p "Confirmation not given. Press [ENTER] to return to the Endpoint Account Management Menu." continue
         root_server_endpoint_acct_mgmt_menu
     fi
 }
 
 dev_mgmt_delete() {
     clear
-    echo "IronJump SSH Management - Delete Endpoint Device Account Wizard"
+    echo "IronJump SSH Management - Delete Endpoint Account Wizard"
     nav_top_bar
-    echo -e "\n"
-    read -p "Enter an endpoint device to delete: " dev_set_delete_name
-    if [[ $(cat /etc/passwd |grep $dev_set_delete_name |wc -l) -eq 0 ]]; then
-        read -p "Endpoint device not found. Press [Enter] to return to the Endpoint Device Account Management Menu." continue
-        root_server_endpoint_acct_mgmt_menu
-    elif [[ ! -d /home/ironjump/endpoints/chroot/$dev_set_delete_name ]]; then
-        read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to the Endpoint Device Account Management Menu." continue
-        root_server_endpoint_acct_mgmt_menu
-    fi
+    list_endpoints
+    nav_breaker_bar
+    read -p "Enter an endpoint to delete: " dev_set_delete_name
+    local_account_check endpoints $dev_set_delete_name
     read -p "Are you sure you want to delete $dev_set_delete_name? Type [CONFIRM]: " choice
     if [[ $(echo $choice | tr [[:upper:]] [[:lower:]]) == "confirm" ]]; then
+        sed -i 's/^/#/' /home/ironjump/endpoints/chroot/$dev_set_delete_name/.ssh/authorized_keys
         userdel -r $dev_set_delete_name &>/dev/null
         pkill -u $dev_set_delete_name
-        echo "Endpoint device $dev_set_delete_name has been deleted!"
-        echo -e "\r\n--------------------------------------------------------"
+        echo "Endpoint $dev_set_delete_name has been deleted!"
+        nav_breaker_bar
         read -p "Press [ENTER] to continue." continue
         root_server_endpoint_acct_mgmt_menu
     else
-        read -p "Confirmation not given. Press [ENTER] to return to the Endpoint Device Account Management Menu." continue
+        nav_breaker_bar
+        read -p "Confirmation not given. Press [ENTER] to return to the Endpoint Account Menu." continue
         root_server_endpoint_acct_mgmt_menu
     fi
 }
 
 dev_mgmt_mod_pubkey() {
     clear
-    echo "IronJump SSH Management - Endpoint Device Account Public Key Update Wizard"
+    echo "IronJump SSH Management - Endpoint Account Public Key Update Wizard"
     nav_top_bar
-    echo -e "\n"
-    read -p "Enter an endpoint device to modify its SSH Public Key: " dev_set_update_pubkey_name
-    if [[ $(cat /etc/passwd |grep $dev_set_update_pubkey_name |wc -l) -eq 0 ]]; then
-        read -p "Endpoint device not found. Press [Enter] to return to the Endpoint Device Account Management Menu." continue
-        root_server_endpoint_acct_mgmt_menu
-    elif [[ ! -d /home/ironjump/endpoints/chroot/$usr_set_update_pubkey_name ]]; then
-        read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to the Endpoint Device Account Management Menu." continue
+    list_endpoints
+    nav_breaker_bar
+    read -p "Enter a username to modify their SSH Public Key: " dev_set_update_pubkey_name
+    local_account_check endpoints $dev_set_update_pubkey_name
+    read -p "   --> New SSH Pubkey {key_type key}: " dev_set_update_pubkey_key
+    if [[ ! "$dev_set_update_pubkey_key" =~ ^ssh-ed25519 ]] && [[ ! "$dev_set_update_pubkey_key" =~ ^ssh-rsa ]]; then
+        echo "SSH Pubkeys must be ed25519 (recommended) or RSA. Aborting modification."
+        nav_breaker_bar
+        read -p "Press [ENTER] to continue. Returning to Endpoint Account Menu" continue
         root_server_endpoint_acct_mgmt_menu
     else
-        read -p "   --> New SSH Pubkey {key_type key}: " dev_set_update_pubkey_key
-        if [[ ! "$dev_set_update_pubkey_key" =~ ^ssh-ed25519 ]] && [[ ! "$dev_set_update_pubkey_key" =~ ^ssh-rsa ]]; then
-            echo "SSH Pubkey must be ed25519 (recommended) or RSA. Aborting user creation."
-            echo -e "\r\n--------------------------------------------------------"
-            read -p "Press [ENTER] to continue. Returning to Endpoint Device Account Management Menu" continue
-            root_server_endpoint_acct_mgmt_menu
-        else
-            key_type=$(echo $dev_set_update_pubkey_key | awk '{print $1}')
-            key=$(echo $dev_set_update_pubkey_key | awk '{print $2}')
-            ssh_key=$(echo $key_type $key $dev_set_update_pubkey_name)
-        fi
-    echo -e "\r\nUpdating SSH Public Key for: \r\n\tEndpoint Device: $dev_set_update_public_name \r\n\tPublic SSH Key: $ssh_key"
-    echo -e "\r\n--------------------------------------------------------"
-    read -p "Press [C] to confirm or [A] to abort: " choice
-    case "$choice" in
-        A|a) root_server_endpoint_acct_mgmt_menu ;;
-        C|c)
-            echo $ssh_key > /home/ironjump/endpoints/chroot/$usr_set_update_pubkey_name/.ssh/authorized_keys
-            chown $usr_set_update_pubkey_name:$usr_set_update_pubkey_name /home/ironjump/endpoints/chroot/$usr_set_update_pubkey_name/.ssh/authorized_keys
-            chmod 0600 /home/ironjump/endpoints/chroot/$usr_set_update_pubkey_name/.ssh/authorized_keys
-            ;;
-        *) invalid_choice; root_server_endpoint_mgmt_menu ;;
-    esac
+        key_type=$(echo $dev_set_update_pubkey_key | awk '{print $1}')
+        key=$(echo $dev_set_update_pubkey_key | awk '{print $2}') 
+        ssh_key=$(echo $dev_type $key $dev_set_update_pubkey_name)
+    fi
+    read -p "Are you sure you want to change $dev_set_delete_name's public key? Type [CONFIRM]: " choice
+    if [[ $(echo $choice | tr [[:upper:]] [[:lower:]]) == "confirm" ]]; then
+        echo -e "\r\nUpdating SSH Public Key for: \r\n\tEndpoint: $dev_set_update_pubkey_name \r\n\tPublic SSH Key: $ssh_key"
+        echo $ssh_key > /home/ironjump/endpoints/chroot/$dev_set_update_pubkey_name/.ssh/authorized_keys
+        chown $dev_set_update_pubkey_name:$dev_set_update_pubkey_name /home/ironjump/endpoints/chroot/$dev_set_update_pubkey_name/.ssh/authorized_keys
+        chmod 0600 /home/ironjump/endpoints/chroot/$dev_set_update_pubkey_name/.ssh/authorized_keys
+        echo -e "\nUser $usr_set_enable_name's public key has been modified!"
+        echo -e "\n\n WARNING: THIS DID NOT UPDATE THE PRIVATE KEY ON THE ENDPOINT.\n\n"
+        nav_breaker_bar
+        read -p "Press [ENTER] to continue. Returning to Endpoint Account Menu" continue
+        root_server_endpoint_acct_mgmt_menu
+    else
+        nav_breaker_bar
+        read -p "Confirmation not given. Press [ENTER] to return to the Endpoint Account Menu." continue
+        root_server_endpoint_acct_mgmt_menu
     fi
     root_server_endpoint_acct_mgmt_menu
 }
 
 dev_mgmt_set_expire() {
     clear
-    echo "IronJump SSH Management - Expire Endpoint Device Account Wizard"
+    echo "IronJump SSH Management - Expire Endpoint Account Wizard"
     nav_top_bar
-    echo -e "\n"
-    read -p "Enter an endpoint device to set an expiration date: " dev_set_expire_name
-    if [[ $(cat /etc/passwd |grep $dev_set_expire_name |wc -l) -eq 0 ]]; then
-        read -p "Endpoint device not found. Press [Enter] to return to the Endpoint Device Account Management Menu." continue
-        root_server_endpoint_acct_mgmt_menu
-    fi
-    if [[ ! -d /home/ironjump/endpoints/chroot/$dev_set_expire_name ]]; then
-        read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to the Endpoint Device Account Management Menu." continue
+    list_endpoints
+    nav_breaker_bar
+    read -p "Enter an endpoint to set an expiration date: " dev_set_expire_name
+    local_account_check endpoints $dev_set_expire_name
+    echo -e "To set or unset an expiration to a specify date:"
+    echo -e "\t   never: Disable Expiration"
+    echo -e "\t   YYYY-MM-DD: Specific date (ex. '2025-12-31' is December 31, 2025)\n"
+    read -p "Please specify \"never\" or set a specific date: " dev_set_expire_date
+    if [[ "$dev_set_expire_date" == "never" ]]; then
+        chage -E -1 $dev_set_expire_name
+        echo -e "\nEndpoint $dev_set_expire_name is set to never expire."
+        nav_breaker_bar
+        read -p "Press [ENTER] to continue." continue
         root_server_endpoint_acct_mgmt_menu
     else
-        echo -e "To set an expiration, specify the number of days as:\r\n\t   -1: Never Expire, or\r\n\t1-999: Number of days from now\r\n"
-        read -p "In how many days from today would you like the account to expire? " dev_set_expire_days
-        dev_set_expire=$(echo $dev_set_expire_days |tr -d "+")
-        if [[ "$dev_set_expire_days" == "-1" ]]; then
-            chage -E -1 $dev_set_expire_name
-            echo "Endpoint device $dev_set_expire_name is set to never expire."
-            echo -e "\r\n--------------------------------------------------------"
-            read -p "Press [ENTER] to continue." continue
-            root_server_endpoint_acct_mgmt_menu
-        elif [[ "$dev_set_expire_days" =~ ^[0-9]+$ ]] && [[ "$dev_set_expire_days" -gt 0 ]]; then
-            chage -E $(date -d "+$dev_set_expire_days days" +%Y-%m-%d) $dev_set_expire_name
-            echo "Endpoint device $dev_set_expire_name account will expire in $dev_set_expire_days days."
-            echo -e "\r\n--------------------------------------------------------"
-            read -p "Press [ENTER] to continue." continue
-            root_server_endpoint_acct_mgmt_menu
-        else
-            echo "Invalid number of days specified. Only the number 1-999 or -1 can be used."
-            read -p "Press [ENTER] to try again." continue
-            dev_mgmt_set_expire
-        fi
+        validate_date endpoint $dev_set_expire_date
+        chage -E $dev_set_expire_date $dev_set_expire_name
+        echo -e "\nThe account $dev_set_expire_name will expire on $dev_set_expire_date days."
+        nav_breaker_bar
+        read -p "Press [ENTER] to continue." continue
+        root_server_endpoint_acct_mgmt_menu
     fi
 }
 
 #ep_mgmt_menu
 ep_connect() {
+    clear
+    if [[ ! -f /opt/IronJump/autossh/configure ]]; then read -p "AutoSSH files are not in folder. Cannot deploy endpoint. See README file." continue; root_server_mgmt_menu ;fi
     clear
     echo "IronJump SSH Management : Endpoint Registration Wizard"
     nav_top_bar
@@ -1245,6 +1236,7 @@ echo -e "\r\nLast Update: \$(date)" >> /root/.ssh/access_control
 
 #Process access control file after synchronization
 ACCESS_FILE="/root/.ssh/access_control"
+# TODO: Promopt for sudo access instead of default allow
 SUDOERS_FILE="/etc/sudoers.d/ironjump_users"
 touch "\$SUDOERS_FILE"
 chmod 440 "\$SUDOERS_FILE"
@@ -1328,6 +1320,7 @@ assignments_add_by_user() {
     clear
     echo -e "Access Control Management - Assign a User - Wizard"
     nav_top_bar
+    list_users
     read -p "Please specify a user account: " assign_user
     if ! $(id $assign_user &>/dev/null); then echo "User not found. Returning to Access Control Menu."; sleep 1; access_control_assign_user; fi
     if [[ ! -d /home/ironjump/users/chroot/$assign_user ]]; then echo -e "\nLocal Account Detected!\nUser account is eligible for Assignment.\n\nReturning to Access Control Menu."; sleep 2; access_control_assign_user; fi
@@ -1347,6 +1340,7 @@ assignments_add_by_endpoint() {
     clear
     echo -e "Access Control Management - Assign a User - Wizard"
     nav_top_bar
+    list_endpoints
     read -p "Please specify an endpoint: " assign_endpoint
     if ! $(id $assign_endpoint &>/dev/null); then echo "Endpoint account not found. Returning to Access Control Menu."; sleep 1; access_control_assign_user; fi
     if [[ ! -d /home/ironjump/endpoints/chroot/$assign_endpoint ]]; then echo -e "\nEndpoint exists, but no home director found.\n\nReturning to Access Control Menu."; sleep 2; access_control_assign_user; fi
@@ -1366,6 +1360,7 @@ assignments_revoke_by_user() {
     clear
     echo -e "Access Control Management - Revoke a User - Wizard"
     nav_top_bar
+    list_users
     read -p "Please specify a user account: " assign_user
     if ! $(id $assign_user &>/dev/null); then echo "User not found. Returning to Access Control Menu."; sleep 1; access_control_revoke_user; fi
     if [[ ! -d /home/ironjump/users/chroot/$assign_user ]]; then echo -e "\nLocal Account Detected!\nUser account is eligible for Assignment.\n\nReturning to Access Control Menu."; sleep 2; access_control_revoke_user; fi
@@ -1385,6 +1380,7 @@ assignments_revoke_by_endpoint() {
     clear
     echo -e "Access Control Management - Revoke a User - Wizard"
     nav_top_bar
+    list_endpoints
     read -p "Please specify an endpoint: " assign_endpoint
     if ! $(id $assign_endpoint &>/dev/null); then echo "Endpoint account not found. Returning to Access Control Menu."; sleep 1; access_control_revoke_user; fi
     if [[ ! -d /home/ironjump/endpoints/chroot/$assign_endpoint ]]; then echo -e "\nEndpoint exists, but no home director found.\n\nReturning to Access Control Menu."; sleep 2; access_control_revoke_user; fi
@@ -1440,3 +1436,60 @@ ssh_monitor() {
     done
 }
 
+validate_date() {
+# NOTE: Requires two inputs when called "{user or endpoint" and "date in formate YYYY-MM-YY" for confirmation and navigation upon error.
+    read_input_date=$2
+    if ! [[ "$read_input_date" =~ ^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$ ]]; then
+        nav_breaker_bar
+        read -p "[ERROR] Invalid format. Please enter the date as YYYY-MM-DD." continue
+        if [[ "$1" == "user" ]]; then usr_mgmt_set_expire; fi
+        if [[ "$1" == "endpoint" ]]; then dev_mgmt_set_expire; else root_server_mgmt_menu; fi
+    fi
+    year=${read_input_date:0:4}
+    month=${read_input_date:5:2}
+    day=${read_input_date:8:2}
+    if (( year < 2025 || year > 2125 )); then
+        nav_breaker_bar
+        read -p "[ERROR] Year must be between 2025 and 2125." continue
+        if [[ "$1" == "user" ]]; then usr_mgmt_set_expire; fi
+        if [[ "$1" == "endpoint" ]]; then dev_mgmt_set_expire; else root_server_mgmt_menu; fi
+    fi
+    case "$month" in
+        01|03|05|07|08|10|12) days_in_month=31 ;;  # Months with 31 days
+        04|06|09|11) days_in_month=30 ;;           # Months with 30 days
+        02) # February, check for leap year
+            if (( (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0) )); then
+                days_in_month=29  # Leap year
+            else
+                days_in_month=28  # Non-leap year
+            fi
+            ;;
+        *)
+            nav_breaker_bar
+            read -p "[ERROR] Month must 01 through 12." continue
+            if [[ "$1" == "user" ]]; then usr_mgmt_set_expire; fi
+            if [[ "$1" == "endpoint" ]]; then dev_mgmt_set_expire; else root_server_mgmt_menu; fi
+            ;;
+    esac
+    if (( day > days_in_month )); then
+        nav_breaker_bar
+        read -p "[ERROR] Day number must be within the requested day. (Ex. There is no Feb 31st.)" continue
+        if [[ "$1" == "user" ]]; then usr_mgmt_set_expire; fi
+        if [[ "$1" == "endpoint" ]]; then dev_mgmt_set_expire; else root_server_mgmt_menu; fi
+    fi
+    input_date=$(date -d $read_input_date +%s 2>/dev/null)
+    today_date=$(date +%s)
+    if [[ -z "$input_date" ]]; then
+        nav_breaker_bar
+        read -p "[ERROR] Invalid date entered. Please try again." continue
+        if [[ "$1" == "user" ]]; then usr_mgmt_set_expire; fi
+        if [[ "$1" == "endpoint" ]]; then dev_mgmt_set_expire; else root_server_mgmt_menu; fi
+    fi
+    if [[ "$input_date" -le "$today_date" ]]; then
+        nav_breaker_bar
+        read -p "[ERROR] The date must be in the future." continue
+        if [[ "$1" == "user" ]]; then usr_mgmt_set_expire; fi
+        if [[ "$1" == "endpoint" ]]; then dev_mgmt_set_expire; else root_server_mgmt_menu; fi
+    fi
+    return
+}
