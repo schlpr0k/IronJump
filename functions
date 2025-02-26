@@ -6,6 +6,7 @@ ast_reboot() {
 }
 
 prompt_reboot() {
+    local prompt_response
     read -p "(C)ontinue or (R)eturn: " prompt_response
     case "$prompt_response" in
         C|c) echo -e "\r\n\tRebooting server NOW" ; shutdown -r now ; exit 0 ;;
@@ -149,6 +150,7 @@ f_sshd_restart(){
 }
 
 f_ssh_hard_os_selection() {
+    local choice
     clear
     echo "Select the operating system to perform SSH hardening..."
     nav_top_bar
@@ -194,6 +196,7 @@ f_ssh_hard_os_selection() {
 }
 
 f_ssh_hard_check() {
+    local choice
     if [[ -f $SSH_CONFIG_FILE ]]; then
         echo -e "\r\n\tFound SSH Configuration File"
         echo -e "\t  !Recommended Action: Would you like to make a backup? (y/n)"
@@ -211,6 +214,7 @@ f_ssh_hard_check() {
 }
 
 f_ssh_hard_regen_hostkeys_1() {
+    local choice
     if [[ -f /etc/ssh/ssh_host_rsa_key && -f /etc/ssh/ssh_host_ed25519_key ]]; then
         echo -e "\r\n\tSSH host keys for RSA and ED25519 currently exist.\r\n\tDo you want to regenerate the keys? (y/n)"
         echo -e "\t\t- If this is the first time: Recommendation = yes"
@@ -438,6 +442,7 @@ f_ssh_hard_s17() {
 ## Deploy IronJump Root Server
 f_setup_ironjump() {
     f_sshd_setup
+    f_diceware_setup
     harden_ssh_service
     echo "Creating Chroot Environment."
     mkdir -p /home/ironjump/{users,servers,endpoints}/chroot
@@ -691,13 +696,14 @@ EOF
 
 # TODO: This is moving to /etc/ssh/sshd_config.d/ironjump; still necessary, but needs update.
 view_configuration() {
+    local continue
     if [[ -f ./ironjump-ssh.conf ]]; then
         cat ./ironjump-ssh.conf |grep -v "^#" |grep -v ^$
-        echo -e "\r\n--------------------------------------------------------"
+        nav_breaker_bar
         read -p "Press [ENTER] to continue."
     else
         echo "Configuration file not in current working director."
-        echo -e "\r\n--------------------------------------------------------"
+        nav_breaker_bar
         read -p "Press [ENTER] to continue." continue
     fi
     deployment_menu
@@ -705,11 +711,12 @@ view_configuration() {
 
 # TODO: This is moving to /etc/ssh/sshd_config.d/ironjump; still necessary, but needs update.
 mod_configuration() {
+    local continue
     if [[ -f ./ironjump-ssh.conf ]]; then
         vi ./ironjump-ssh.conf
     else
         echo "Configuration file not in current working director."
-        echo -e "\r\n--------------------------------------------------------"
+        nav_breaker_bar
         read -p "Press [ENTER] to continue." continue
     fi
     deployment_menu
@@ -721,6 +728,7 @@ harden_ssh_service() {
 }
 
 usr_mgmt_list() {
+    local continue
     clear
     echo "IronJump SSH Management - All Users"
     nav_top_bar
@@ -731,6 +739,11 @@ usr_mgmt_list() {
 }
 
 usr_mgmt_new() {
+    local usr_new_set_name
+    local usr_new_set_comment
+    local usr_set_new_pubkey
+    local continue
+    local choice
     clear
     echo "IronJump SSH Management - Create/Add SSH User"
     nav_top_bar
@@ -745,9 +758,9 @@ usr_mgmt_new() {
         read -p "Press [ENTER] to continue. Returning to User Account Menu" continue
         root_server_user_acct_mgmt_menu
     else
-        key_type=$(echo $usr_new_set_pubkey | awk '{print $1}')
-        key=$(echo $usr_new_set_pubkey | awk '{print $2}')
-        ssh_key=$(echo $key_type $key $usr_new_set_name)
+        local key_type=$(echo $usr_new_set_pubkey | awk '{print $1}')
+        local key=$(echo $usr_new_set_pubkey | awk '{print $2}')
+        local ssh_key=$(echo $key_type $key $usr_new_set_name)
     fi
     echo -e "\r\nA new $usr_type user account will be created using the following: \r\n\tUsername: $usr_new_set_name \r\n\tIdentity: $usr_new_set_comment \r\n\tPublic SSH Key: $ssh_key \r\n\tExpiration: None"
     echo -e "\r\n--------------------------------------------------------"
@@ -755,9 +768,9 @@ usr_mgmt_new() {
     case "$choice" in
         A|a) root_server_user_acct_mgmt_menu ;;
         C|c)
-            usr_new_set_homedir="$IRONJUMP_CHROOT_ENV/users/chroot/$usr_new_set_name"
-            usr_new_set_sshdir="$usr_new_set_homedir/.ssh"
-            usr_new_set_authorized_keys="$usr_new_set_sshdir/authorized_keys"
+            local usr_new_set_homedir="$IRONJUMP_CHROOT_ENV/users/chroot/$usr_new_set_name"
+            local usr_new_set_sshdir="$usr_new_set_homedir/.ssh"
+            local usr_new_set_authorized_keys="$usr_new_set_sshdir/authorized_keys"
             useradd -U -m -s $(which nologin) -d $usr_new_set_homedir -c "$usr_new_set_comment" -G $IRONJUMP_SSH_GROUP $usr_new_set_name
             mkdir -p $usr_new_set_sshdir
             echo $ssh_key > $usr_new_set_authorized_keys
@@ -774,6 +787,8 @@ usr_mgmt_new() {
 }
 
 local_account_check(){
+    local continue
+    # Function requires 2 inputes when called 1) {users or endpoints} and 2) {username}
     if [[ -z $(passwd -S $2 2>/dev/null) ]]; then
         read -p "Account not found. Press [Enter] to return to the Root Server Management Menu." continue
         root_server_mgmt_menu
@@ -784,6 +799,9 @@ local_account_check(){
 }
 
 usr_mgmt_enable() {
+    local usr_set_enable_name
+    local continue
+    local choice
     clear
     echo "IronJump SSH Management - Enable User Account Wizard"
     nav_top_bar
@@ -813,6 +831,9 @@ usr_mgmt_enable() {
 }
 
 usr_mgmt_disable() {
+    local usr_set_disable_name
+    local continue
+    local choice
     clear
     echo "IronJump SSH Management - Disable User Account Wizard"
     nav_top_bar
@@ -842,6 +863,9 @@ usr_mgmt_disable() {
 }
 
 usr_mgmt_delete() {
+    local usr_set_delete_name
+    local continue
+    local choice
     clear
     echo "IronJump SSH Management - Delete User Account Wizard"
     nav_top_bar
@@ -866,6 +890,11 @@ usr_mgmt_delete() {
 }
 
 usr_mgmt_mod_pubkey() {
+    local usr_set_update_pubkey_name
+    local usr_set_update_pubkey_key
+    local 
+    local continue
+    local choice
     clear
     echo "IronJump SSH Management - User Account Public Key Update Wizard"
     nav_top_bar
@@ -880,9 +909,9 @@ usr_mgmt_mod_pubkey() {
         read -p "Press [ENTER] to continue. Returning to User Account Menu" continue
         root_server_user_acct_mgmt_menu
     else
-        key_type=$(echo $usr_set_update_pubkey_key | awk '{print $1}')
-        key=$(echo $usr_set_update_pubkey_key | awk '{print $2}')
-        ssh_key=$(echo $key_type $key $usr_set_update_pubkey_name)
+        local key_type=$(echo $usr_set_update_pubkey_key | awk '{print $1}')
+        local key=$(echo $usr_set_update_pubkey_key | awk '{print $2}')
+        local ssh_key=$(echo $key_type $key $usr_set_update_pubkey_name)
     fi
     read -p "Are you sure you want to change $usr_set_delete_name's public key? Type [CONFIRM]: " choice
     if [[ $(echo $choice | tr [[:upper:]] [[:lower:]]) == "confirm" ]]; then
@@ -890,7 +919,8 @@ usr_mgmt_mod_pubkey() {
         echo $ssh_key > /home/ironjump/users/chroot/$usr_set_update_pubkey_name/.ssh/authorized_keys
         chown $usr_set_update_pubkey_name:$usr_set_update_pubkey_name /home/ironjump/users/chroot/$usr_set_update_pubkey_name/.ssh/authorized_keys
         chmod 0600 /home/ironjump/users/chroot/$usr_set_update_pubkey_name/.ssh/authorized_keys
-        access_control_path="/home/ironjump/endpoints/chroot/*/access_control"
+        # TODO: Needs Review - If key is updated in all access control files, will it update their access to endpoints.
+        local access_control_path="/home/ironjump/endpoints/chroot/*/access_control"
         sed -i -E "s|^($usr_set_update_pubkey_name):[^:]+ ([^:]+):|\1:$ssh_key:|" $access_control_path
         echo -e "\nUser $usr_set_enable_name's public key has been modified!"
         nav_breaker_bar
@@ -905,6 +935,9 @@ usr_mgmt_mod_pubkey() {
 }
 
 usr_mgmt_set_expire() {
+    local usr_set_expire_name
+    local usr_set_expire_date
+    local continue
     clear
     echo "IronJump SSH Management - Expire User Account Wizard"
     nav_top_bar
@@ -934,6 +967,7 @@ usr_mgmt_set_expire() {
 
 #dev_acct_mgmt_menu
 dev_mgmt_list() {
+    local continue
     clear
     echo "IronJump SSH Management - All Endpoints"
     nav_top_bar
@@ -944,6 +978,8 @@ dev_mgmt_list() {
 }
 
 dev_mgmt_new() {
+    local ep_new_comment
+    local continue
     clear
     echo "IronJump SSH Management - New Endpoint Account Creation"
     nav_top_bar
@@ -967,7 +1003,7 @@ dev_mgmt_new() {
     local dev_new_set_authorized_keys="$dev_new_set_sshdir/authorized_keys"
     useradd -U -m -s $(which bash) -d $dev_new_set_homedir -c "$ep_new_comment" -G ingot_registry $ep_account_name
     mkdir -p $dev_new_set_sshdir
-    echo "$dev_new_set_pubkey" > $dev_new_set_authorized_keys
+    touch $dev_new_set_authorized_keys
     chown -R $ep_account_name:$ep_account_name $dev_new_set_sshdir
     #Create Keys
     ssh-keygen -t ed25519 -f "$dev_new_set_sshdir/ironsync_key" -N "" -C $ep_account_name
@@ -978,7 +1014,7 @@ dev_mgmt_new() {
     mv $dev_new_set_sshdir/ironjump_key $dev_new_set_homedir/ironjump_key
     mv $dev_new_set_sshdir/ironjump_key.pub $dev_new_set_sshdir/authorized_keys
     #Add to Group ingot_registry
-    usermod  -aG ingot_registry "$ep_account_name"
+    usermod -aG ingot_registry "$ep_account_name"
     #Generate One Time Password XXXX-XXXX-XXXX
     if [[ ! -z $(which diceware) ]]; then
         local token=$(diceware -n 3 -d "::" -r system)
@@ -1023,11 +1059,14 @@ EOF
     echo -e "\r\n!!!Write this down!!!\nThese are single use credentials for endpoint registration.\n\nAdvancing to the next screen will remove the credentials \nfrom view and they will not be shown again."
     nav_breaker_bar
     unset token
-    read -p "Press ENTER to return." choice
+    read -p "Press ENTER to return." continue
     root_server_endpoint_account_mgmt_menu
 }
 
 dev_mgmt_enable() {
+    local dev_set_enable_name
+    local continue
+    local choice
     clear
     echo "IronJump SSH Management - Enable Endpoint Account Wizard"
     nav_top_bar
@@ -1057,6 +1096,9 @@ dev_mgmt_enable() {
 }
 
 dev_mgmt_disable() {
+    local dev_set_disable_name
+    local continue
+    local choice
     clear
     echo "IronJump SSH Management - Disable Endpoints Account Wizard"
     nav_top_bar
@@ -1086,6 +1128,9 @@ dev_mgmt_disable() {
 }
 
 dev_mgmt_delete() {
+    local dev_set_delete_name
+    local continue
+    local choice
     clear
     echo "IronJump SSH Management - Delete Endpoint Account Wizard"
     nav_top_bar
@@ -1095,9 +1140,9 @@ dev_mgmt_delete() {
     local_account_check endpoints $dev_set_delete_name
     read -p "Are you sure you want to delete $dev_set_delete_name? Type [CONFIRM]: " choice
     if [[ $(echo $choice | tr [[:upper:]] [[:lower:]]) == "confirm" ]]; then
-        sed -i 's/^/#/' /home/ironjump/endpoints/chroot/$dev_set_delete_name/.ssh/authorized_keys
         userdel -r $dev_set_delete_name &>/dev/null
         pkill -u $dev_set_delete_name
+        rm -Rf /home/ironjump/endpoints/chroot/$dev_set_delete_name &>/dev/null
         echo "Endpoint $dev_set_delete_name has been deleted!"
         nav_breaker_bar
         read -p "Press [ENTER] to continue." continue
@@ -1110,6 +1155,10 @@ dev_mgmt_delete() {
 }
 
 dev_mgmt_mod_pubkey() {
+    local dev_set_update_pubkey_name
+    local dev_set_update_pubkey_key
+    local continue
+    local choice
     clear
     echo "IronJump SSH Management - Endpoint Account Public Key Update Wizard"
     nav_top_bar
@@ -1124,9 +1173,9 @@ dev_mgmt_mod_pubkey() {
         read -p "Press [ENTER] to continue. Returning to Endpoint Account Menu" continue
         root_server_endpoint_acct_mgmt_menu
     else
-        key_type=$(echo $dev_set_update_pubkey_key | awk '{print $1}')
-        key=$(echo $dev_set_update_pubkey_key | awk '{print $2}') 
-        ssh_key=$(echo $dev_type $key $dev_set_update_pubkey_name)
+        local key_type=$(echo $dev_set_update_pubkey_key | awk '{print $1}')
+        local key=$(echo $dev_set_update_pubkey_key | awk '{print $2}') 
+        local ssh_key=$(echo $dev_type $key $dev_set_update_pubkey_name)
     fi
     read -p "Are you sure you want to change $dev_set_delete_name's public key? Type [CONFIRM]: " choice
     if [[ $(echo $choice | tr [[:upper:]] [[:lower:]]) == "confirm" ]]; then
@@ -1148,6 +1197,9 @@ dev_mgmt_mod_pubkey() {
 }
 
 dev_mgmt_set_expire() {
+    local dev_set_expire_name
+    local dev_set_expire_date
+    local continue
     clear
     echo "IronJump SSH Management - Expire Endpoint Account Wizard"
     nav_top_bar
@@ -1167,7 +1219,7 @@ dev_mgmt_set_expire() {
         root_server_endpoint_acct_mgmt_menu
     else
         validate_date endpoint $dev_set_expire_date
-        chage -E $dev_set_expire_date $dev_set_expire_name
+        chage -iE $dev_set_expire_date $dev_set_expire_name
         echo -e "\nThe account $dev_set_expire_name will expire on $dev_set_expire_date days."
         nav_breaker_bar
         read -p "Press [ENTER] to continue." continue
@@ -1177,20 +1229,24 @@ dev_mgmt_set_expire() {
 
 #ep_mgmt_menu
 ep_connect() {
+    local ironjump_srv_ip
+    local ironjump_ep_name
+    local has_token
+    local continue
     clear
     if [[ ! -f /opt/IronJump/autossh/configure ]]; then read -p "AutoSSH files are not in folder. Cannot deploy endpoint. See README file." continue; root_server_mgmt_menu ;fi
     clear
     echo "IronJump SSH Management : Endpoint Registration Wizard"
     nav_top_bar
-    echo -e "INFO: This wizard will connect this endpoint to an\nIronJump Server. You will need the following to continue:\n    * The IronJump Server IP Address\n    * The endpoint account name\n    * The one-time access password\r\n"
+    echo -e "INFO: This wizard will connect this endpoint to an\nIronJump Server. You will need the following to continue:\n  --> The IronJump Server IP Address\n  --> The endpoint account name\n  --> The one-time access password\r\n"
     nav_breaker_bar
     read -p "Press [ENTER] to continue" continue
     echo  -e "\r\n Collect Information for Registration\n"
-    read -p "    What is the IronJump Server IP: " ironjump_srv_ip
-    read -p "    What is this endpoint's name: " ironjump_ep_name
-    read -p "    Where you provided an SSH access password? (yes/no): " has_token
+    read -p "  -->  What is the IronJump Server IP: " ironjump_srv_ip
+    read -p "  -->  What is this endpoint's name: " ironjump_ep_name
+    read -p "  -->  Where you provided an SSH access password? (yes/no): " has_token
     case $has_token in
-        No|no|N|n) read -p "You cannot proceed without a prassword." ; ep_mgmt_menu ;;
+        No|no|N|n) read -p "[WARNING] You cannot proceed without a prassword." ; ep_mgmt_menu ;;
         Yes|yes|Y|y) sleep 1 ;;
         *) invalid_choice ; ep_mgmt_menu ;;
     esac
@@ -1209,7 +1265,7 @@ ep_connect() {
     if [[ -z $IRONJUMP_SERVER ]]; then
         echo -e "IRONJUMP_SERVER=$ironjump_srv_ip" >> /etc/environment
     else
-        sed -i "s/^IRONJUMP_SERVER.*$/IRONJUMP=$ironjump_srv_ip/" /etc/environment
+        sed -i "s/^IRONJUMP_SERVER.*$/IRONJUMP_SERVER=$ironjump_srv_ip/" /etc/environment
     fi
     #Sets environment variable IRONJUMP_EP_NAME or changes it every ep_connect registration execution.
     #Needed as environment variable for /bin/ironjump-connect.sh and /bin/ironjump-sync.sh
@@ -1227,7 +1283,7 @@ ep_connect() {
     #Update hosts file with new hostname; most Linux systems use the environment variable of HOST or HOSTNAME
     if [[ ! -z $HOST ]]; then sed -i "s/$HOST/$IRONJUMP_EP_NAME/g" /etc/hosts; fi
     if [[ ! -z $HOSTNAME ]]; then sed -i "s/$HOSTNAME/$IRONJUMP_EP_NAME/g" /etc/hosts; fi
-    ## TODO: Next 2 lines may not be necessary because the host will reboot after registration and these will be updated.
+    ## TODO: Next 2 lines may not be necessary because the host will reboot after registration and these will be updated. Needs review.
     HOST=$IRONJUMP_EP_NAME
     HOSTNAME=$IRONJUMP_EP_NAME
     cat /root/ingot-keys |grep ironjump_key |cut -d '"' -f2 |sed -e 's/-\ /-\n/g' -e 's/\ -/\n-/g' >/root/.ssh/ironjump_key
@@ -1258,14 +1314,20 @@ SUDOERS_FILE="/etc/sudoers.d/ironjump_users"
 touch "\$SUDOERS_FILE"
 chmod 440 "\$SUDOERS_FILE"
 
-while IFS=":" read -r username ssh_key status; do
+process_access_control(){
+local username
+local ssh_key
+local status
+local priv
+local expiration
+while IFS=":" read -r username ssh_key status priv expiration; do
+
     [[ -z "\$username" || "\$username" == "Last Update"* || "\$username" == "root" ]] && continue
-    user_exists=\$(id "\$username" &>/dev/null && echo "yes" || echo "no")
+    local user_exists=\$(id "\$username" &>/dev/null && echo "yes" || echo "no")
     case "\$status" in
         "Allowed")
             if [[ "\$user_exists" == "yes" ]]; then
-                usermod -U "\$username"
-                chage -E -1 "\$username"
+                usermod -U "\$username" &>/dev/null
                 grep -q "^\$username " "\$SUDOERS_FILE" || echo "\$username ALL=(ALL) NOPASSWD:ALL" >> "\$SUDOERS_FILE"
                 echo "\$ssh_key" >> "/home/\$username/.ssh/authorized_keys"
                 chmod 600 "/home/\$username/.ssh/authorized_keys"
@@ -1278,27 +1340,31 @@ while IFS=":" read -r username ssh_key status; do
                 chmod 600 "/home/\$username/.ssh/authorized_keys"
                 echo "\$ssh_key" > "/home/\$username/.ssh/authorized_keys"
                 chown -R "\$username:\$username" "/home/\$username/.ssh"
-                echo "\$username ALL=(ALL) NOPASSWD:ALL" >> "\$SUDOERS_FILE"
-                #NEW_PASSWORD=\$(tr -dc 'A-Za-z0-9\~\!\@\#\$\%\^\&\*\(\)\_\+\-\=\[\]\{\}\;\:\<\>\,\.\?\/' < /dev/urandom |head -c 64)
-                #echo "\$username:\$NEW_PASSWORD" | chpasswd
-                #unset NEW_PASSWORD
             fi
+
+            #Set/Remove sudoer  Privileges
+            if [[ "\$priv" == "U" ]]; then sed -i "/\$username /d" \$SUDOERS_FILE; fi
+            if [[ "\$priv" == "S" ]] && [[ -z \$(grep \$username \$SUDOERS_FILE) ]]; then echo "\$username ALL=(ALL) NOPASSWD:ALL" >> "\$SUDOERS_FILE"; fi
+
+
+            #Set/Modify Account Expiration
+            if [[ "\$expiration" == "DNE" ]]; then chage -E -1 "\$username"; else chage -iE "\$expiration" "\$username"; fi
             ;;
-        "Revoked"|"Deleted")
+        "Revoked")
             if [[ "\$user_exists" == "yes" ]]; then
-                user_locked=\$(passwd -S "\$username" | grep -q " L \| LK " && echo "yes" || echo "no")
-                if [[ "\$user_locked" == "no" ]]; then
-                    usermod -L "\$username"
-                    chage -E 0 "\$username"
-                    pkill -u "\$username"
-                    echo "" > "/home/\$username/.ssh/authorized_keys"
-                    chmod 600 "/home/\$username/.ssh/authorized_keys"
-                    sed -i "/^\$username /d" "\$SUDOERS_FILE"
-                fi
+                usermod -L "\$username" &>/dev/null
+                chage -E 0 "\$username"
+                pkill -u "\$username"
+                echo "" > "/home/\$username/.ssh/authorized_keys"
+                chmod 600 "/home/\$username/.ssh/authorized_keys"
+                sed -i "/^\$username /d" "\$SUDOERS_FILE"
             fi
             ;;
     esac
 done < "\$ACCESS_FILE"
+}
+
+process_access_control
 EOF
     chmod 0700 /bin/ironjump-*.sh
     chown root:root /bin/ironjump-*.sh
@@ -1314,10 +1380,11 @@ EOF
 }
 
 ep_force_sync(){
+    local continue
     if [[ ! -f /bin/ironjump-sync.sh ]]; then
         echo "This endpoint has has not been previously connected to an IronJump server."
     else
-        echo -e "\nSyncing permissions with IronJump server at $ironjump_srv_ip."
+        echo -e "\nSyncing permissions with IronJump server."
         /bin/ironjump-sync.sh
     fi
     nav_breaker_bar
@@ -1326,6 +1393,7 @@ ep_force_sync(){
 }
 
 ep_smelt_device() {
+    local continue
     clear
     echo "System Meltdown: Execution of Lethal Termination (S.M.E.L.T.)"
     nav_top_bar
@@ -1334,104 +1402,544 @@ ep_smelt_device() {
     ep_mgmt_menu
 }
 
-#Access Control Management
-assignments_add_by_user() {
-    clear
-    echo -e "Access Control Management - Assign a User - Wizard"
-    nav_top_bar
-    list_users
-    read -p "Please specify a user account: " assign_user
-    if ! $(id $assign_user &>/dev/null); then echo "User not found. Returning to Access Control Menu."; sleep 1; access_control_assign_user; fi
-    if [[ ! -d /home/ironjump/users/chroot/$assign_user ]]; then echo -e "\nLocal Account Detected!\nUser account is eligible for Assignment.\n\nReturning to Access Control Menu."; sleep 2; access_control_assign_user; fi
-    echo -e "\nCurrent User Assignments: $assign_user\n------------------------\n"
-    grep -H $assign_user /home/ironjump/endpoints/chroot/*/access_control |awk -F'[:,/]' '{print "   --> " $(NF-4) ": " $NF}'
-    read -p "What endpoint should $assign_user be allowed access: " assign_endpoint
-    if ! $(id $assign_endpoint &>/dev/null); then echo "Endpoint Account not found. Returning to Access Control Menu."; sleep 1; access_control_assign_user; fi
-    if [[ ! -d /home/ironjump/endpoints/chroot/$assign_endpoint ]]; then echo -e "\nEndpoint exists, but no home directory found.\n\nReturning to Access Control Menu."; sleep 1; access_control_assign_user; fi
-    sed -i "/$assign_user/d" /home/ironjump/endpoints/chroot/$assign_endpoint/access_control
-    echo -e "$assign_user:$(cat /home/ironjump/users/chroot/$assign_user/.ssh/authorized_keys):Allowed" >>/home/ironjump/endpoints/chroot/$assign_endpoint/access_control
-    echo -e "\nUser $assign_user Allowed Access to $assign_endpoint.\nChanges may take up to 5 minutes."
-    read -p "Press [ENTER] to return to Access Control Menu" continue
-    access_control_mgmt_menu
-}
-
-assignments_add_by_endpoint() {
-    clear
-    echo -e "Access Control Management - Assign a User - Wizard"
-    nav_top_bar
-    list_endpoints
-    read -p "Please specify an endpoint: " assign_endpoint
-    if ! $(id $assign_endpoint &>/dev/null); then echo "Endpoint account not found. Returning to Access Control Menu."; sleep 1; access_control_assign_user; fi
-    if [[ ! -d /home/ironjump/endpoints/chroot/$assign_endpoint ]]; then echo -e "\nEndpoint exists, but no home director found.\n\nReturning to Access Control Menu."; sleep 2; access_control_assign_user; fi
-    echo -e "\nCurrent User Assignments: $assign_endpoint\n------------------------\n"
-    cat /home/ironjump/endpoints/chroot/$assign_endpoint/access_control |awk -F'[:,/]' '{print "    --> " $1 ": " $NF}'
-    read -p "What what user should be allowed access to $assign_endpoint: " assign_user
-    if ! $(id $assign_user &>/dev/null); then echo "User Account not found. Returning to Access Control Menu."; sleep 1; access_control_assign_user; fi
-    if [[ ! -d /home/ironjump/users/chroot/$assign_user ]]; then echo -e "\nLocal Account Detected!\nUser account is eligible for Assignment.\n\nReturning to Access Control Menu."; sleep 2; access_control_assign_user; fi
-    sed -i "/$assign_user/d" /home/ironjump/endpoints/chroot/$assign_endpoint/access_control
-    echo -e "$assign_user:$(cat /home/ironjump/users/chroot/$assign_user/.ssh/authorized_keys):Allowed" >>/home/ironjump/endpoints/chroot/$assign_endpoint/access_control
-    echo -e "\nUser $assign_user Allowed Access to $assign_endpoint.\nChanges may take up to 5 minutes."
-    read -p "Press [ENTER] to return to Access Control Menu" continue
-    access_control_mgmt_menu
-}
-
-assignments_revoke_by_user() {
-    clear
-    echo -e "Access Control Management - Revoke a User - Wizard"
-    nav_top_bar
-    list_users
-    read -p "Please specify a user account: " assign_user
-    if ! $(id $assign_user &>/dev/null); then echo "User not found. Returning to Access Control Menu."; sleep 1; access_control_revoke_user; fi
-    if [[ ! -d /home/ironjump/users/chroot/$assign_user ]]; then echo -e "\nLocal Account Detected!\nUser account is eligible for Assignment.\n\nReturning to Access Control Menu."; sleep 2; access_control_revoke_user; fi
-    echo -e "\nCurrent User Assignments: $assign_user\n------------------------\n"
-    grep -H $assign_user /home/ironjump/endpoints/chroot/*/access_control |awk -F'[:,/]' '{print "   --> " $(NF-4) ": " $NF}'
-    read -p "On what endpoint should $assign_user be revoked: " assign_endpoint
-    if ! $(id $assign_endpoint &>/dev/null); then echo "Endpoint Account not found. Returning to Access Control Menu."; sleep 1; access_control_revoke_user; fi
-    if [[ ! -d /home/ironjump/endpoints/chroot/$assign_endpoint ]]; then echo -e "\nEndpoint exists, but no home directory found.\n\nReturning to Access Control Menu."; sleep 1; access_control_revoke_user; fi
-    sed -i "/$assign_user/d" /home/ironjump/endpoints/chroot/$assign_endpoint/access_control
-    echo -e "$assign_user:$(cat /home/ironjump/users/chroot/$assign_user/.ssh/authorized_keys):Revoked" >>/home/ironjump/endpoints/chroot/$assign_endpoint/access_control
-    echo -e "\nRevoked User: $assign_user on $assign_endpoint.\nChanges may take up to 5 minutes."
-    read -p "Press [ENTER] to return to Access Control Menu" continue
-    access_control_mgmt_menu
-}
-
-assignments_revoke_by_endpoint() {
-    clear
-    echo -e "Access Control Management - Revoke a User - Wizard"
-    nav_top_bar
-    list_endpoints
-    read -p "Please specify an endpoint: " assign_endpoint
-    if ! $(id $assign_endpoint &>/dev/null); then echo "Endpoint account not found. Returning to Access Control Menu."; sleep 1; access_control_revoke_user; fi
-    if [[ ! -d /home/ironjump/endpoints/chroot/$assign_endpoint ]]; then echo -e "\nEndpoint exists, but no home director found.\n\nReturning to Access Control Menu."; sleep 2; access_control_revoke_user; fi
-    echo -e "\nCurrent User Assignments: $assign_endpoint\n------------------------\n"
-    cat /home/ironjump/endpoints/chroot/$assign_endpoint/access_control |awk -F'[:,/]' '{print "    --> " $1 ": " $NF}'
-    read -p "What what user should have access revoked from $assign_endpoint: " assign_user
-    if ! $(id $assign_user &>/dev/null); then echo "User Account not found. Returning to Access Control Menu."; sleep 1; access_control_revoke_user; fi
-    if [[ ! -d /home/ironjump/users/chroot/$assign_user ]]; then echo -e "\nLocal Account Detected!\nUser account is eligible for Assignment.\n\nReturning to Access Control Menu."; sleep 2; access_control_revoke_user; fi
-    sed -i "/$assign_user/d" /home/ironjump/endpoints/chroot/$assign_endpoint/access_control
-    echo -e "$assign_user:$(cat /home/ironjump/users/chroot/$assign_user/.ssh/authorized_keys):Revoked" >>/home/ironjump/endpoints/chroot/$assign_endpoint/access_control
-    echo -e "\nUser $assign_user Denied Access to $assign_endpoint.\nChanges may take up to 5 minutes."
-    read -p "Press [ENTER] to return to Access Control Menu" continue
-    access_control_mgmt_menu
-}
-
 access_control_list_assignments() {
+    local useranem
+    local password
+    local uid
+    local gid
+    local comment
+    local home
+    local shell
+    local continue
+    local usr
+    local pubkey
+    local i_stat
+    local continue
     clear
     echo -e "Access Control Management - View Assignments"
     nav_top_bar
-    cat /etc/passwd |sort |while IFS=: read -r username password uid gid comment home shell; do if [[ $(echo $home |grep "/home/ironjump/endpoints" |wc -l) -eq 1 ]]; then u_stat=$(passwd -S $username |awk '{print $2}'); if [[ $(echo $u_stat) == "P" || $(echo $u_stat) == "PS" ]]; then echo -e "$username (Enabled)"; while IFS=: read -r usr pubkey i_stat; do echo "    --> $usr ($i_stat)"; done <$home/access_control; else echo "$username (Disabled)"; fi; fi; done |more
+    cat /etc/passwd |sort |while IFS=: read -r username password uid gid comment home shell; do
+        if [[ $(echo $home |grep "/home/ironjump/endpoints" |wc -l) -eq 1 ]]; then
+            local u_stat=$(passwd -S $username |awk '{print $2}')
+            if [[ $(echo $u_stat) == "P" || $(echo $u_stat) == "PS" ]]; then
+                echo -e "$username (Enabled)"
+                while IFS=: read -r usr pubkey i_stat; do
+                    echo "    --> $usr ($i_stat)"
+                done <$home/access_control
+            else echo "$username (Disabled)"
+            fi
+        fi
+    done |more
     nav_breaker_bar
     read -p "Press [ENTER] to return to Menu." continue
     access_control_mgmt_menu
 }
 
+#Access Control Management
+assignments_add_by_user() {
+    local assign_user
+    local assign_endpoint
+    local assign_priv
+    local assign_set_priv
+    local assign_exp
+    local assign_set_exp
+    local continue
+    local choice
+    clear
+    echo -e "Access Control Management - Assign a User - Wizard"
+    nav_top_bar
+    echo -e "Available User Accounts:\n------------------------"
+    list_users enabled
+    nav_breaker_bar
+    #Ask for a user account
+    read -p "Please specify a user account: " assign_user
+
+    #Check user account
+    #TODO: Fix redirection on error
+    local_account_check users $assign_user
+    echo -e "\nCurrent User Assignments: $assign_user\n"
+    grep -H $assign_user /home/ironjump/endpoints/chroot/*/access_control |awk -F'[:/]' '{print "    --> "$6"\n        --> "$8" ("$10":"$11":"$12")"}'
+    nav_breaker_bar
+    echo "1. Add or Update Assignments for User"
+    echo "R. Return to Menu"
+    nav_breaker_bar
+    read -p "Please make a selection: " choice
+    case $choice in
+        1) true ;;
+        R|r) access_control_mgmt_menu ;;
+        *) invalid_choice ; read -p "Starting over. Press [ENTER] to continue." continue ; assignments_add_by_user ;;
+    esac
+
+    #Ask for target endpoint
+    echo -e "Available endpoints:\n--------------------"
+    list_endpoints enabled
+    echo -e "\n"
+    read -p "What endpoint should $assign_user be allowed access: " assign_endpoint
+
+    #Check if endpoint exists
+    #TODO: Fix redirection on error
+    local_account_check endpoints $assign_endpoint
+
+    #Ask for permission level
+    unset assign_set_priv
+    while [[ -z $assign_set_priv ]]; do
+        read -p "  --> Should the user have sudo access? (yes/no): " assign_priv
+        case $assign_priv in
+            yes|YES|Yes|y) assign_set_priv="S" ;;
+            no|NO|No|n) assign_set_priv="U" ;;
+            *) invalid_choice ; read -p "Starting over. Press [ENTER] to continue." continue ; assignments_add_by_user ;;
+        esac
+    done
+
+    #Check for user's expiration
+    local assign_exp=$(chage -l $assign_user |grep "Account expires" |awk '{print $NF}')
+    if [[ "$assign_exp" == "never" ]]; then assign_set_exp="DNE"; else assign_set_exp=$assign_exp; fi
+    echo -e "  --> Current expiration for $assign_user is: $assign_exp"
+    read -p "    --> Set/Modify user's expiration for this specific endpoint? (yes/no) " choice
+    case $choice in
+        YES|Yes|yes|Y|y)
+            echo -e "\nTo set or unset an expiration to a specify date:"
+            echo -e "\t   never: Disable Expiration"
+            echo -e "\t   YYYY-MM-DD: Specific date (ex. '2025-12-31' is December 31, 2025)\n"
+            read -p "Please specify \"never\" (DNE) or set a specific date: " assign_exp
+            if [[ "$assign_exp" == "never" ]]; then
+                assign_set_exp="DNE"
+                nav_breaker_bar
+            else
+                validate_date assignment $assign_exp
+                assign_set_exp=$assign_exp
+                nav_breaker_bar
+            fi
+            ;;
+        NO|No|no|N|n) echo -e "Expiration set to: $assign_set_exp" ;;
+        *) invalid_choice ; read -p "Starting over. Press [ENTER] to continue." ; assignments_add_by_user ;;
+    esac
+
+    #Delete any pre-existing access control entries for user on endpoint before setting/resetting
+    sed -i "/$assign_user/d" /home/ironjump/endpoints/chroot/$assign_endpoint/access_control
+
+    #Build access control string and put in access_control file of target endpoint
+    echo -e "$assign_user:$(cat /home/ironjump/users/chroot/$assign_user/.ssh/authorized_keys):Allowed:$assign_set_priv:$assign_set_exp" >>/home/ironjump/endpoints/chroot/$assign_endpoint/access_control
+    echo -e "\nUser $assign_user Allowed Access to $assign_endpoint."
+    if [[ "$assign_set_priv" == "S" ]]; then
+        echo "User will have root-level access privileges."
+    else
+        echo "User will have not have elevated privileges."
+    fi
+    echo -e "User's access to $assign_endpoint set to: $assign_set_exp"
+    echo -e "\nNote: Changes may take up to 5 minutes."
+    nav_breaker_bar
+    read -p "Press [ENTER] to return to Access Control Menu" continue
+    access_control_mgmt_menu
+}
+
+assignments_add_by_endpoint() {
+    local assign_endpoint
+    local assign_user
+    local assign_priv
+    local assign_set_priv
+    local assign_exp
+    local assign_set_exp
+    local continue
+    local choice
+    clear
+    echo -e "Access Control Management - Assign a User - Wizard"
+    nav_top_bar
+    #Ask for target endpoint
+    echo -e "Available endpoints:\n--------------------"
+    list_endpoints enabled
+    echo -e "\n"
+    read -p "Please specify an endpoint: " assign_endpoint
+
+    #Check if endpoint exists
+    #TODO: Fix redirection on error
+    local_account_check endpoints $assign_endpoint
+
+    echo -e "Currently Assigned User Account: $assign_endpoint\n------------------------\n"
+    cat /home/ironjump/endpoints/chroot/$assign_endpoint/access_control |awk '{print "    --> "$1" ("$3":"$4":"$5")"}'
+
+    #Ask for a user account
+    echo -e "Available users:\n--------------------"
+    list_users enabled
+    echo -e "\n"
+    read -p "Please specify a user account: " assign_user
+
+    #Check user account
+    #TODO: Fix redirection on error
+    local_account_check users $assign_user
+    nav_breaker_bar
+    echo "1. Add User Account or Update Exiting Assignments for User"
+    echo "R. Return to Menu"
+    nav_breaker_bar
+    read -p "Please make a selection: " choice
+    case $choice in
+        1) true ;;
+        R|r) access_control_mgmt_menu ;;
+        *) invalid_choice ; read -p "Starting over. Press [ENTER] to continue." continue ; assignments_add_by_endpoint ;;
+    esac
+
+    #Ask for permission level
+    unset assign_set_priv
+    while [[ -z $assign_set_priv ]]; do
+        read -p "  --> Should the user have sudo access? (yes/no): " assign_priv
+        case $assign_priv in
+            yes|YES|Yes|y) assign_set_priv="S" ;;
+            no|NO|No|n) assign_set_priv="U" ;;
+            *) invalid_choice ; read -p "Starting over. Press [ENTER] to continue." continue ; assignments_add_by_endpoint ;;
+        esac
+    done
+
+    #Check for user's expiration
+    assign_exp=$(chage -l $assign_user |grep "Account expires" |awk '{print $NF}')
+    if [[ "$assign_exp" == "never" ]]; then assign_set_exp="DNE"; else assign_set_exp=$assign_exp; fi
+    echo -e "  --> Current expiration for $assign_user is: $assign_exp"
+    read -p "    --> Set/Modify user's expiration for this specific endpoint? (yes/no) " choice
+    case $choice in
+        YES|Yes|yes|Y|y)
+            echo -e "\nTo set or unset an expiration to a specify date:"
+            echo -e "\t   never: Disable Expiration"
+            echo -e "\t   YYYY-MM-DD: Specific date (ex. '2025-12-31' is December 31, 2025)\n"
+            read -p "Please specify \"never\" (DNE) or set a specific date: " assign_exp
+            if [[ "$assign_exp" == "never" ]]; then
+                assign_set_exp="DNE"
+                nav_breaker_bar
+            else
+                validate_date assignment $assign_exp
+                assign_set_exp=$assign_exp
+                nav_breaker_bar
+            fi
+            ;;
+        NO|No|no|N|n) echo -e "Expiration set to: $assign_set_exp" ;;
+        *) invalid_choice ; read -p "Starting over. Press [ENTER] to continue." ; assignments_add_by_endpoint ;;
+    esac
+
+    #Delete any pre-existing access control entries for user on endpoint before setting/resetting
+    sed -i "/$assign_user/d" /home/ironjump/endpoints/chroot/$assign_endpoint/access_control
+
+    #Build access control string and put in access_control file of target endpoint
+    echo -e "$assign_user:$(cat /home/ironjump/users/chroot/$assign_user/.ssh/authorized_keys):Allowed:$assign_set_priv:$assign_set_exp" >>/home/ironjump/endpoints/chroot/$assign_endpoint/access_control
+    echo -e "\nUser $assign_user Allowed Access to $assign_endpoint."
+    if [[ "$assign_set_priv" == "S" ]]; then
+        echo "User will have root-level access privileges."
+    else
+        echo "User will have not have elevated privileges."
+    fi
+    echo -e "User's access to $assign_endpoint set to: $assign_set_exp"
+    echo -e "\nNote: Changes may take up to 5 minutes."
+    nav_breaker_bar
+    read -p "Press [ENTER] to return to Access Control Menu" continue
+    access_control_mgmt_menu
+}
+
+assignments_revoke_by_user() {
+    local assign_user
+    local assign_endpoint
+    local continue
+    local choice
+    clear
+    echo -e "Access Control Management - Revoke a User - Wizard"
+    nav_top_bar
+    echo -e "Available User Accounts:\n------------------------"
+    list_users enabled
+    nav_breaker_bar
+    #Ask for a user account
+    read -p "Please specify a user account: " assign_user
+
+    #Check user account
+    #TODO: Fix redirection on error
+    local_account_check users $assign_user
+    echo -e "\nCurrent User Assignments: $assign_user\n"
+    grep -H $assign_user /home/ironjump/endpoints/chroot/*/access_control |awk -F'[:/]' '{print "    --> "$6"\n        --> "$8" ("$10":"$11":"$12")"}'
+    echo -e "\n"
+    nav_breaker_bar
+    echo "1. Revoke Assignments for User"
+    echo "2. Revoke ALL Assignments for User"
+    echo "R. Return to Menu"
+    nav_breaker_bar
+    read -p "Please make a selection: " choice
+    case $choice in
+        1)
+            echo -e "\n"
+            read -p "What endpoint should $assign_user be revoked from: " assign_endpoint
+
+            #Check if endpoint exists
+            #TODO: Fix redirection on error
+            local_account_check endpoints $assign_endpoint
+
+            #Prompt for confirmation
+            echo -e "\nUser $assign_user will be revoked from endpoint $assign_endpoint."
+            nav_breaker_bar
+            read -p "Press [C] to confirm or [A] to abort: " choice
+            case $choice in
+                C|c)
+                    sed -i "/$assign_user:/s/:Allowed:.*$/:Revoked:U:$(date +%Y-%m-%d)/" /home/ironjump/endpoints/chroot/$assign_endpoint/access_control
+                    echo -e "\nRevocation complete.\nNote: Changes may take up to 5 minutes."
+                    nav_breaker_bar
+                    read -p "Press [ENTER] to return to Access Control Menu" continue
+                    access_control_mgmt_menu
+                    ;;
+                A|a) read -p "Aborting revocation. Returning to Access Control Menu." continue ; access_control_mgmt_menu ;;
+                *) invalid_choice ; read -p "Starting over. Press [ENTER] to continue." continue ; assignments_revoke_by_user ;;
+            esac
+            ;;
+        2)
+            echo -e "\nUser $assign_user will be revoked on ALL currently assigned hosts."
+            nav_breaker_bar
+            read -p "Press [C] to confirm or [A] to abort: " choice
+            case $choice in
+                C|c)
+                    find /home/ironjump/endpoints/chroot/ -type f -name "access_control" -exec sed -i "/^$assign_user:/s/:Allowed:.*$/:Revoked:U:$(date +%Y-%m-%d)/" {} +
+                    nav_breaker_bar
+                    read -p "Revocation complete. Press [ENTER] to retun to Access Control Menu." continue
+                    access_control_mgmt_menu
+                    ;;
+                A|a)
+                    echo -e "\nAborting revocation. Returning to Access Control Menu."
+                    nav_breaker_bar
+                    read -p "Press [ENTER] to return to Access Control Menu." continue
+                    access_control_mgmt_menu
+                    ;;
+                *) invalid_choice ; read -p "Starting over. Press [ENTER] to continue." continue ; assignments_revoke_by_user ;;
+            esac
+            ;;
+        R|r) access_control_mgmt_menu ;;
+        *) invalid_choice ; read -p "Starting over. Press [ENTER] to continue." continue ; assignments_revoke_by_user ;;
+    esac
+}
+
+assignments_revoke_by_endpoint() {
+    local assign_user
+    local assign_endpoint
+    local continue
+    local choice
+    clear
+    echo -e "Access Control Management - Revoke a User - Wizard"
+    nav_top_bar
+    #Ask for target endpoint
+    echo -e "Available endpoints:\n--------------------"
+    list_endpoints enabled
+    echo -e "\n"
+    read -p "Please specify an endpoint: " assign_endpoint
+
+    #Check if endpoint exists
+    #TODO: Fix redirection on error
+    local_account_check endpoints $assign_endpoint
+
+    echo -e "Currently Assigned User Account: $assign_endpoint\n------------------------\n"
+    cat /home/ironjump/endpoints/chroot/$assign_endpoint/access_control |awk '{print "    --> "$1" ("$3":"$4":"$5")"}'
+
+    echo -e "\n"
+    read -p "Please specify a user account: " assign_user
+
+    #Check user account
+    #TODO: Fix redirection on error
+    local_account_check users $assign_user
+    nav_breaker_bar
+    echo "1. Revoke Assignments for User"
+    echo "2. Revoke Assignments for ALL Users"
+    echo "R. Return to Menu"
+    nav_breaker_bar
+    read -p "Please make a selection: " choice
+    case $choice in
+        1)
+            #Prompt for confirmation
+            echo -e "\nUser $assign_user will be revoked from endpoint $assign_endpoint."
+            nav_breaker_bar
+            read -p "Press [C] to confirm or [A] to abort: " choice
+            case $choice in
+                C|c)
+                    sed -i "/$assign_user:/s/:Allowed:.*$/:Revoked:U:$(date +%Y-%m-%d)/" /home/ironjump/endpoints/chroot/$assign_endpoint/access_control
+                    echo -e "\nRevocation complete.\nNote: Changes may take up to 5 minutes."
+                    nav_breaker_bar
+                    read -p "Press [ENTER] to return to Access Control Menu" continue
+                    access_control_mgmt_menu
+                    ;;
+                A|a) read -p "Aborting revocation. Returning to Access Control Menu." continue ; access_control_mgmt_menu ;;
+                *) invalid_choice ; read -p "Starting over. Press [ENTER] to continue." continue ; assignments_revoke_by_endpoint ;;
+            esac
+            ;;
+        2)
+            #Prompt for confirmation
+            echo -e "\nALL users will be revoked from endpoint $assign_endpoint."
+            nav_breaker_bar
+            read -p "Press [C] to confirm or [A] to abort: " choice
+            case $choice in
+                C|c)
+                    sed -i 's/:Allowed:.*$/:Revoked:U:$(date +%Y-%m-%d)/g' /home/ironjump/endpoints/chroot/$assign_endpoint/access_control
+                    echo -e "\nRevocation complete.\nNote: Changes may take up to 5 minutes."
+                    nav_breaker_bar
+                    read -p "Press [ENTER] to return to Access Control Menu" continue
+                    access_control_mgmt_menu
+                    ;;
+                A|a)
+                    echo -e "\nAborting revocation. Returning to Access Control Menu."
+                    nav_breaker_bar
+                    read -p "Press [ENTER] to return to Access Control Menu" continue
+                    access_control_mgmt_menu
+                    ;;
+                *) invalid_choice ; read -p "Starting over. Press [ENTER] to continue." continue ; assignments_revoke_by_endpoint ;;
+            esac
+            ;;
+        R|r) access_control_mgmt_menu ;;
+        *) invalid_choice ; read -p "Starting over. Press [ENTER] to continue." continue ; assignments_revoke_by_endpoint ;;
+    esac
+}
+
+access_control_mass_assignments(){
+    local assign_user
+    local assign_priv
+    local assign_set_priv
+    local assign_exp
+    local assign_set_exp
+    local continue
+    local choice
+    clear
+    echo -e "Access Control Management - Mass Assignment - Wizard"
+    nav_top_bar
+    echo -e "Available User Accounts:\n------------------------"
+    list_users enabled
+    nav_breaker_bar
+    #Ask for a user account
+    read -p "Please specify a user account: " assign_user
+
+    #Check user account
+    #TODO: Fix redirection on error
+    local_account_check users $assign_user
+    nav_breaker_bar
+    echo "1. Allow User Access to ALL Endpoints"
+    echo "2. Revoke User Access from ALL Endpoints"
+    echo "R. Return to Menu"
+    nav_breaker_bar
+    read -p "Please make a selection: " choice
+    case $choice in
+        1)
+            #Prompt for confirmation
+            echo -e "\nUser $assign_user will be allowed to access ALL endpoint."
+            nav_breaker_bar
+            read -p "Press [C] to confirm or [A] to abort: " choice
+            case $choice in
+                C|c)
+                    #Ask for permission level
+                    unset assign_set_priv
+                    while [[ -z $assign_set_priv ]]; do
+                        read -p "  --> Should the user have sudo access? (yes/no): " assign_priv
+                        case $assign_priv in
+                            yes|YES|Yes|y) assign_set_priv="S" ;;
+                            no|NO|No|n) assign_set_priv="U" ;;
+                            *) invalid_choice ; read -p "Starting over. Press [ENTER] to continue." continue ; access_control_mass_assignments ;;
+                        esac
+                    done
+
+                    #Check for user's expiration
+                    assign_exp=$(chage -l $assign_user |grep "Account expires" |awk '{print $NF}')
+                    if [[ "$assign_exp" == "never" ]]; then assign_set_exp="DNE"; else assign_set_exp=$assign_exp; fi
+                    echo -e "  --> Current expiration for $assign_user is: $assign_exp"
+                    read -p "    --> Set/Modify user's expiration for this specific endpoint? (yes/no) " choice
+                    case $choice in
+                        YES|Yes|yes|Y|y)
+                            echo -e "\nTo set or unset an expiration to a specify date:"
+                            echo -e "\t   never: Disable Expiration"
+                            echo -e "\t   YYYY-MM-DD: Specific date (ex. '2025-12-31' is December 31, 2025)\n"
+                            read -p "Please specify \"never\" (DNE) or set a specific date: " assign_exp
+                            if [[ "$assign_exp" == "never" ]]; then
+                                assign_set_exp="DNE"
+                                nav_breaker_bar
+                            else
+                                validate_date assignment $assign_exp
+                                assign_set_exp=$assign_exp
+                                nav_breaker_bar
+                            fi
+                            ;;
+                        NO|No|no|N|n) echo -e "Expiration set to: $assign_set_exp" ;;
+                        *) invalid_choice ; read -p "Starting over. Press [ENTER] to continue." continue ; access_control_mass_assignments ;;
+                    esac
+
+                    #Delete any pre-existing access control entries for user on endpoint before setting/resetting
+                    find /home/ironjump/endpoints/chroot/* -type f -name "access_control" -exec sed -i "/$assign_user/d" {} +
+
+                    #Build access control string and put in access_control file of ALL endpoint
+                    for file in /home/ironjump/endpoints/chroot/*/access_control; do
+                        echo -e "$assign_user:$(cat /home/ironjump/users/chroot/$assign_user/.ssh/authorized_keys):Allowed:$assign_set_priv:$assign_set_exp" >> $file
+                    done
+                    echo -e "\nMass assignment complete. User $assign_user Allowed Access to ALL endpoints."
+                    if [[ "$assign_set_priv" == "S" ]]; then
+                        echo "User will have root-level access privileges."
+                    else
+                        echo "User will have not have elevated privileges."
+                    fi
+                    echo -e "\nMass assignment complete.\nNote: Changes may take up to 5 minutes."
+                    nav_breaker_bar
+                    read -p "Press [ENTER] to return to Access Control Menu" continue
+                    access_control_mgmt_menu
+                    ;;
+                A|a)
+                    echo -e "\nAborting mass assignment. Returning to Access Control Menu."
+                    nav_breaker_bar
+                    read -p "Press [ENTER] to return to Access Control Menu" continue
+                    access_control_mgmt_menu
+                    ;;
+                *) invalid_choice ; read -p "Starting over. Press [ENTER] to continue." continue ; access_control_mass_assignments ;;
+            esac
+            ;;
+        2)
+            #Prompt for confirmation
+            echo -e "\nUser $assign_user will be revoked from ALL endpoint."
+            nav_breaker_bar
+            read -p "Press [C] to confirm or [A] to abort: " choice
+            case $choice in
+                C|c)
+                    find /home/ironjump/endpoints/chroot/* -type f -name "access_control" -exec sed -i "/^$assign_user:/s/:Allowed:.*$/:Revoked:U:$(date +%Y-%m-%d)/" {} +
+                    echo -e "\nMass Revocation complete.\nNote: Changes may take up to 5 minutes."
+                    nav_breaker_bar
+                    read -p "Press [ENTER] to return to Access Control Menu" continue
+                    access_control_mgmt_menu
+                    ;;
+                A|a)
+                    echo -e "\nAborting mass revocation. Returning to Access Control Menu."
+                    nav_breaker_bar
+                    read -p "Press [ENTER] to return to Access Control Menu" continue
+                    access_control_mgmt_menu
+                    ;;
+                *) invalid_choice ; read -p "Starting over. Press [ENTER] to continue." continue ; access_control_mass_assignments ;;
+            esac
+            ;;
+        R|r) access_control_mgmt_menu ;;
+        *) invalid_choice ; read -p "Starting over. Press [ENTER] to continue." continue ; access_control_mass_assignments ;;
+    esac
+}
+
+access_controll_revoke_all_assignments(){
+    local continue
+    local choice
+    clear
+    echo -e "Access Control Management - Revoke ALL Assignments - Wizard"
+    nav_top_bar
+    echo -e "\n\n[WARNING] This will revoke ALL users assignments from ALL endpoints.\n\n"
+    echo -e "  --> Do you need a hug?\n  --> If you are in distress, blink twice.\n  --> Maybe you could try counting to 10 before continuing.\n  --> Should I call a crisis counselor or just let you work through this?\n"
+    nav_breaker_bar
+    read -p "Type [CONFIRM]: " choice
+    if [[ $(echo $choice | tr [[:upper:]] [[:lower:]]) == "confirm" ]]; then
+        find /home/ironjump/endpoint/chroot/* -type f -name "access_control" -exec sed -i 's/:Allowed:.*$/:Revoked:U:$(date +%Y-%m-%d)/g' {} +
+        echo -e "\nMass revocation complete. All users revoked from ALL endpoints."
+        nav_breaker_bar
+        read -p "Press [ENTER] to return to Access Control Management." continue
+        access_control_mgmt_menu
+    else
+        read -p "Confirmation not given. Press [ENTER] to return to the User Access Control Menu." continue
+        access_control_mgmt_menu
+    fi
+}
 
 ssh_monitor() {
+    local pid
+    local user
+    local remote_ip
+    local port
     trap main_menu INT
     while true; do
         clear
         echo "SSH Connection Monitor - $(date)"
-        echo "--------------------------------------------"
+        nav_top_bar
 
         # Display current SSH connections with details (IPs, users, and ports)
         printf "%-15s %-20s %-10s %-10s\n" "USER" "REMOTE_IP" "PORT" "PID"
@@ -1455,23 +1963,47 @@ ssh_monitor() {
     done
 }
 
+validate_date_redirection_on_error(){
+    local continue
+    read -p "Exiting function to preserve integrity. Press [ENTER] to continue." continue
+    case $1 in
+        user) usr_mgmt_set_expire ;;
+        endpoint) dev_mgmt_set_expire ;;
+        assignment) access_control_mgmt_menu ;;
+        *) echo "Validate Date function incorrectly called. Returning to Main Menu"; sleep 5; root_server_mgmt_menu ;;
+    esac
+}
+
+validate_date_error(){
+    echo -e "[ERROR] Year must be between 2025 and 2125."
+    echo -e "[ERROR] Month must 01 through 12."
+    echo -e "[ERROR] Day number must be within the requested day. (Ex. There is no Feb 31st.)"
+    echo -e "[ERROR] The date must be in the future."
+    echo -e "[ERROR] Invalid date entered."
+}
+
 validate_date() {
-# NOTE: Requires two inputs when called "{user or endpoint" and "date in formate YYYY-MM-YY" for confirmation and navigation upon error.
+    local read_input_date
+    local year
+    local month
+    local day
+    local days_in_month
+    local input_date
+    local today_day
+# NOTE: Requires two inputs when called "{user or endpoint or assignment}" and "date in formate YYYY-MM-YY" for confirmation and navigation upon error.
     read_input_date=$2
     if ! [[ "$read_input_date" =~ ^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$ ]]; then
         nav_breaker_bar
-        read -p "[ERROR] Invalid format. Please enter the date as YYYY-MM-DD." continue
-        if [[ "$1" == "user" ]]; then usr_mgmt_set_expire; fi
-        if [[ "$1" == "endpoint" ]]; then dev_mgmt_set_expire; else root_server_mgmt_menu; fi
+        validate_date_error
+        validate_date_redirection_on_error $1
     fi
     year=${read_input_date:0:4}
     month=${read_input_date:5:2}
     day=${read_input_date:8:2}
     if (( year < 2025 || year > 2125 )); then
         nav_breaker_bar
-        read -p "[ERROR] Year must be between 2025 and 2125." continue
-        if [[ "$1" == "user" ]]; then usr_mgmt_set_expire; fi
-        if [[ "$1" == "endpoint" ]]; then dev_mgmt_set_expire; else root_server_mgmt_menu; fi
+        validate_date_error
+        validate_date_redirection_on_error $1
     fi
     case "$month" in
         01|03|05|07|08|10|12) days_in_month=31 ;;  # Months with 31 days
@@ -1485,30 +2017,26 @@ validate_date() {
             ;;
         *)
             nav_breaker_bar
-            read -p "[ERROR] Month must 01 through 12." continue
-            if [[ "$1" == "user" ]]; then usr_mgmt_set_expire; fi
-            if [[ "$1" == "endpoint" ]]; then dev_mgmt_set_expire; else root_server_mgmt_menu; fi
+            validate_date_error
+            validate_date_redirection_on_error $1
             ;;
     esac
     if (( day > days_in_month )); then
         nav_breaker_bar
-        read -p "[ERROR] Day number must be within the requested day. (Ex. There is no Feb 31st.)" continue
-        if [[ "$1" == "user" ]]; then usr_mgmt_set_expire; fi
-        if [[ "$1" == "endpoint" ]]; then dev_mgmt_set_expire; else root_server_mgmt_menu; fi
+        validate_date_error
+        validate_date_redirection_on_error $1
     fi
     input_date=$(date -d $read_input_date +%s 2>/dev/null)
     today_date=$(date +%s)
     if [[ -z "$input_date" ]]; then
         nav_breaker_bar
-        read -p "[ERROR] Invalid date entered. Please try again." continue
-        if [[ "$1" == "user" ]]; then usr_mgmt_set_expire; fi
-        if [[ "$1" == "endpoint" ]]; then dev_mgmt_set_expire; else root_server_mgmt_menu; fi
+        validate_date_error
+        validate_date_redirection_on_error $1
     fi
     if [[ "$input_date" -le "$today_date" ]]; then
         nav_breaker_bar
-        read -p "[ERROR] The date must be in the future." continue
-        if [[ "$1" == "user" ]]; then usr_mgmt_set_expire; fi
-        if [[ "$1" == "endpoint" ]]; then dev_mgmt_set_expire; else root_server_mgmt_menu; fi
+        validate_date_error
+        validate_date_redirection_on_error $1
     fi
     return
 }

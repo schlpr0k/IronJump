@@ -251,15 +251,19 @@ access_control_mgmt_menu() {
     echo -e "-->Main Menu"
     echo -e "   -->Access Control Management Menu\r\n"
     echo -e "Menu Selection:\n"
-    echo "1. Assign User to Endpoint"
-    echo "2. Revoke User from Endpoint"
-    echo "3. List Current User/Endpoint Assignments"
+    echo "1. List All Current Assignments"
+    echo "2. Allow or Modify User Assignments"
+    echo "3. Revoke User Assignments"
+    echo "4. Allow/Revoke a User to All Endpoints (Mass Assignment)"
+    echo "5. Revoke 'ALL' Assignments"
     nav_breaker_bar
     nav_foot_menu
     case $choice in
-        1) access_control_assign_user ;;
-        2) access_control_revoke_user ;;
-        3) access_control_list_assignments ;;
+        1) access_control_list_assignments ;;
+        2) access_control_assign_user_menu ;;
+        3) access_control_revoke_user_menu ;;
+        4) access_control_mass_assignments ;;
+        5) access_controll_revoke_all_assignments ;;
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
         P|p) main_menu ;;
@@ -268,17 +272,17 @@ access_control_mgmt_menu() {
     esac
 }
 
-access_control_assign_user() {
+access_control_assign_user_menu() {
     clear
-    echo -e "Access Control Management - Assign a User"
+    echo -e "IronJump - Access Control Management - Allow/Modify"
     nav_top_bar
     echo -e "\nNavigation:"
     echo -e "-->Main Menu"
     echo -e "   -->Access Control Management Menu"
-    echo -e "      --> Assign a User\r\n"
+    echo -e "      --> Allow/Modify an Account\r\n"
     echo -e "Menu Selection:\n"
-    echo "1. View & Add Assignments by User"
-    echo "2. View & Add Assignments by Endpoint"
+    echo "1. Individual Assignments by User"
+    echo "2. Individual Assignments by Endpoint"
     nav_breaker_bar
     nav_foot_menu
     case $choice in
@@ -288,21 +292,21 @@ access_control_assign_user() {
         R|r) ast_reboot ;;
         P|p) access_control_mgmt_menu ;;
         Q|q) cd $OLDPWD ; exit 0 ;;
-        *) invalid_choice ; access_control_assign_user ;;
+        *) invalid_choice ; access_control_assign_user_menu ;;
     esac
 }
 
-access_control_revoke_user() {
+access_control_revoke_user_menu() {
     clear
-    echo -e "Access Control Management - Revoke a User"
+    echo -e "IronJump - Access Control Management - Allow/Modify"
     nav_top_bar
     echo -e "\nNavigation:"
     echo -e "-->Main Menu"
     echo -e "   -->Access Control Management Menu"
-    echo -e "      --> Revoke a User\r\n"
+    echo -e "      --> Revoke an Account\r\n"
     echo -e "Menu Selection:\n"
-    echo "1. View & Revoke Assignments by User"
-    echo "2. View & Revoke Assignments by Endpoint"
+    echo "1. Revoke Individual Assignments by User"
+    echo "2. Revoke Individual Assignments by Endpoint"
     nav_breaker_bar
     nav_foot_menu
     case $choice in
@@ -312,7 +316,7 @@ access_control_revoke_user() {
         R|r) ast_reboot ;;
         P|p) access_control_mgmt_menu ;;
         Q|q) cd $OLDPWD ; exit 0 ;;
-        *) invalid_choice ; access_control_revoke_user ;;
+        *) invalid_choice ; access_control_revoke_user_menu ;;
     esac
 }
 
