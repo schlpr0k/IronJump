@@ -308,9 +308,9 @@ f_ssh_set_configuration() {
     local continue
     local choice
 
-    #ASK FOR PASSWORD AUTHENTICAITON TO LOCAL USERS
+    #ASK FOR PASSWORD AUTHENTICATION TO LOCAL USERS
     nav_breaker_bar
-    echo -e "\n\n[WARNING] By default password authentication is set to \"YES\" to avoide lockout."
+    echo -e "\n\n[WARNING] By default password authentication is set to \"YES\" to avoid lockout."
     echo -e "  This is \!\!NOT\!\! recommended. You can change it to \"NO\" during setup. However,"
     echo -e "  if you are not setup with SSH Public Keys for remote access, you will lock yourself"
     echo -e "  out from SSH access\!\r\n --> Choose \"YES\" to allow password authenticaiton, -OR-\n  --> Choose \"NO\" to disable password authentication"
@@ -687,20 +687,6 @@ f_cron_setup() {
     echo "Cron setup complete!"
 }
 
-for user in \$(getent group \$IRONJUMP_SSH_GROUP |awk -F: '{print \$4}' | tr ',' ' '); do ironjump_change_password \$user; done
-for server in \$(getent group \$IRONJUMP_SRV_GROUP |awk -F: '{print \$4}' | tr ',' ' '); do ironjump_change_password \$server; done
-for endpoint in \$(getent group \$IRONJUMP_END_GROUP |awk -F: '{print \$4}' | tr ',' ' '); do ironjump_change_password \$endpoint; done
-ironjump_change_password ironsync
-EOF
-    sleep 2
-    chown root:root /bin/ironjump-pass-rotation.sh
-    chmod 0700 /bin/ironjump-pass-rotation.sh
-    (crontab -l 2>/dev/null; echo "0 0,8,16 * * * /bin/ironjump-pass_rotation.sh") | crontab -
-    echo -e "\r\nWARNING! Password rotation for all IronJump accounts is recommended and enabled by default. To disable this service, manually edit the entry [crontab -e].\r\n\r\n\tDO NOT - Add the 'root' account to any IronJump Group.\n\tDO NOT - Add a 'local' account to any IronJump Group.\n\tYou WILL CAUSE LOCKOUT and BREAK your system."
-    echo "=========================="
-    read -p "Press [ENTER] to continue." continue
-}
-
 view_configuration() {
     local continue
     if [[ -f $SSH_CONF_IRONJUMP ]]; then
@@ -793,14 +779,38 @@ usr_mgmt_new() {
 
 local_account_check(){
     local continue
-    # Function requires 2 inputes when called 1) {users or endpoints} and 2) {username}
+    local account_check
+    # Function requires 3 inputes when called 1) {users or endpoints} and 2) {username} and 3) menu location if error
     if [[ -z $(passwd -S $2 2>/dev/null) ]]; then
-        read -p "Account not found. Press [Enter] to return to the Root Server Management Menu." continue
-        root_server_mgmt_menu
+        echo -e "Account not found."
+        account_check="failed"
     elif [[ ! -d /home/ironjump/$1/chroot/$2 ]]; then
-        read -p "Local accounts cannot be managed in IronJump. Press [ENTER] to return to Root Server Management Menu." continue
-        root_server_mgmt_menu
-   fi
+        echo -e "Local accounts cannot be managed in IronJump."
+        account_check="failed"
+    fi
+
+    #Redirection on error
+    if [[ $account_check == "failed" ]]; then
+        nav_breaker_bar
+        case $3 in
+            r_access_menu)
+                read -p "Press [ENTER] to return to the Access Control Menu. " continue
+                access_control_mgmt_menu
+                ;;
+            r_users_menu)
+                read -p "Press [ENTER] to return to the Users Account Management Menu. " continue
+                root_server_user_acct_mgmt_menu
+                ;;
+            r_endpoints_menu)
+                read -p "Press [ENTER] to return to the Endpoint Accounts Management Menu. " continue
+                root_server_endpoint_acct_mgmt_menu
+                ;;
+            *)
+                read -p "Press [ENTER] to return to IronJump Root Menu. " continue
+                root_server_mgmt_menu
+                ;;
+        esac
+    fi
 }
 
 usr_mgmt_enable() {
@@ -813,7 +823,7 @@ usr_mgmt_enable() {
     list_users disabled
     nav_breaker_bar
     read -p "Enter a username to enable: " usr_set_enable_name
-    local_account_check users $usr_set_enable_name
+    local_account_check users $usr_set_enable_name r_users_menu
     if [[ $(list_users enabled |grep "$usr_set_enable_name" |awk '{print $1}') == "(Enabled)" ]]; then
         echo -e "$usr_set_enable_name is already enabled."
         nav_breaker_bar
@@ -845,7 +855,7 @@ usr_mgmt_disable() {
     list_users enabled
     nav_breaker_bar
     read -p "Enter a username to disable: " usr_set_disable_name
-    local_account_check users $usr_set_disable_name
+    local_account_check users $usr_set_disable_name r_users_menu
     if [[ $(list_users disabled |grep "$usr_set_disable_name" |awk '{print $1}') == "(Disable)" ]]; then
         echo -e "$usr_set_disable_name is already disabled."
         nav_breaker_bar
@@ -877,7 +887,7 @@ usr_mgmt_delete() {
     list_users
     nav_breaker_bar
     read -p "Enter a username to delete: " usr_set_delete_name
-    local_account_check users $usr_set_delete_name
+    local_account_check users $usr_set_delete_name r_users_menu
     read -p "Are you sure you want to delete $usr_set_delete_name? Type [CONFIRM]: " choice
     if [[ $(echo $choice | tr [[:upper:]] [[:lower:]]) == "confirm" ]]; then
         sed -i 's/^/#/' /home/ironjump/users/chroot/$usr_set_delete_name/.ssh/authorized_keys
@@ -906,7 +916,7 @@ usr_mgmt_mod_pubkey() {
     list_users
     nav_breaker_bar
     read -p "Enter a username to modify their SSH Public Key: " usr_set_update_pubkey_name
-    local_account_check users $usr_set_update_pubkey_name
+    local_account_check users $usr_set_update_pubkey_name r_users_menu
     read -p "   --> New SSH Pubkey {key_type key}: " usr_set_update_pubkey_key
     if [[ ! "$usr_set_update_pubkey_key" =~ ^ssh-ed25519 ]] && [[ ! "$usr_set_update_pubkey_key" =~ ^ssh-rsa ]]; then
         echo "SSH Pubkeys must be ed25519 (recommended) or RSA. Aborting modification."
@@ -948,7 +958,7 @@ usr_mgmt_set_expire() {
     list_users
     nav_breaker_bar
     read -p "Enter a username to set an expiration date: " usr_set_expire_name
-    local_account_check users $usr_set_expire_name
+    local_account_check users $usr_set_expire_name r_users_menu
     echo -e "To set or unset an expiration to a specify date:"
     echo -e "\t   never: Disable Expiration"
     echo -e "\t   YYYY-MM-DD: Specific date (ex. '2025-12-31' is December 31, 2025)\n"
@@ -1078,7 +1088,7 @@ dev_mgmt_enable() {
     list_endpoints disabled
     nav_breaker_bar
     read -p "Enter an endoint account to enable: " dev_set_enable_name
-    local_account_check endpoints $dev_set_enable_name
+    local_account_check endpoints $dev_set_enable_name r_endpoints_menu
     if [[ $(list_endpoints enabled |grep "$dev_set_enable_name" |awk '{print $1}') == "(Enabled)" ]]; then
         echo -e "$dev_set_enable_name is already enabled."
         nav_breaker_bar
@@ -1110,7 +1120,7 @@ dev_mgmt_disable() {
     list_endpoints enabled
     nav_breaker_bar
     read -p "Enter an endpoint account to disable: " dev_set_disable_name
-    local_account_check endpoints $dev_set_disable_name
+    local_account_check endpoints $dev_set_disable_name r_endpoints_menu
     if [[ $(list_endpoints disabled |grep "$dev_set_disable_name" |awk '{print $1}') == "(Disable)" ]]; then
         echo -e "$dev_set_disable_name is already disabled."
         nav_breaker_bar
@@ -1142,7 +1152,7 @@ dev_mgmt_delete() {
     list_endpoints
     nav_breaker_bar
     read -p "Enter an endpoint to delete: " dev_set_delete_name
-    local_account_check endpoints $dev_set_delete_name
+    local_account_check endpoints $dev_set_delete_name r_endpoints_menu
     read -p "Are you sure you want to delete $dev_set_delete_name? Type [CONFIRM]: " choice
     if [[ $(echo $choice | tr [[:upper:]] [[:lower:]]) == "confirm" ]]; then
         userdel -r $dev_set_delete_name &>/dev/null
@@ -1170,7 +1180,7 @@ dev_mgmt_mod_pubkey() {
     list_endpoints
     nav_breaker_bar
     read -p "Enter a username to modify their SSH Public Key: " dev_set_update_pubkey_name
-    local_account_check endpoints $dev_set_update_pubkey_name
+    local_account_check endpoints $dev_set_update_pubkey_name r_endpoints_menu
     read -p "   --> New SSH Pubkey {key_type key}: " dev_set_update_pubkey_key
     if [[ ! "$dev_set_update_pubkey_key" =~ ^ssh-ed25519 ]] && [[ ! "$dev_set_update_pubkey_key" =~ ^ssh-rsa ]]; then
         echo "SSH Pubkeys must be ed25519 (recommended) or RSA. Aborting modification."
@@ -1211,7 +1221,7 @@ dev_mgmt_set_expire() {
     list_endpoints
     nav_breaker_bar
     read -p "Enter an endpoint to set an expiration date: " dev_set_expire_name
-    local_account_check endpoints $dev_set_expire_name
+    local_account_check endpoints $dev_set_expire_name r_endpoints_menu
     echo -e "To set or unset an expiration to a specify date:"
     echo -e "\t   never: Disable Expiration"
     echo -e "\t   YYYY-MM-DD: Specific date (ex. '2025-12-31' is December 31, 2025)\n"
@@ -1459,7 +1469,7 @@ assignments_add_by_user() {
 
     #Check user account
     #TODO: Fix redirection on error
-    local_account_check users $assign_user
+    local_account_check users $assign_user r_access_menu
     echo -e "\nCurrent User Assignments: $assign_user\n"
     grep -H $assign_user /home/ironjump/endpoints/chroot/*/access_control |awk -F'[:/]' '{print "    --> "$6"\n        --> "$8" ("$10":"$11":"$12")"}'
     nav_breaker_bar
@@ -1481,7 +1491,7 @@ assignments_add_by_user() {
 
     #Check if endpoint exists
     #TODO: Fix redirection on error
-    local_account_check endpoints $assign_endpoint
+    local_account_check endpoints $assign_endpoint r_access_menu
 
     #Ask for permission level
     unset assign_set_priv
@@ -1556,7 +1566,7 @@ assignments_add_by_endpoint() {
 
     #Check if endpoint exists
     #TODO: Fix redirection on error
-    local_account_check endpoints $assign_endpoint
+    local_account_check endpoints $assign_endpoint r_access_menu
 
     echo -e "Currently Assigned User Account: $assign_endpoint\n------------------------\n"
     cat /home/ironjump/endpoints/chroot/$assign_endpoint/access_control |awk '{print "    --> "$1" ("$3":"$4":"$5")"}'
@@ -1569,7 +1579,7 @@ assignments_add_by_endpoint() {
 
     #Check user account
     #TODO: Fix redirection on error
-    local_account_check users $assign_user
+    local_account_check users $assign_user r_access_menu
     nav_breaker_bar
     echo "1. Add User Account or Update Exiting Assignments for User"
     echo "R. Return to Menu"
@@ -1650,7 +1660,7 @@ assignments_revoke_by_user() {
 
     #Check user account
     #TODO: Fix redirection on error
-    local_account_check users $assign_user
+    local_account_check users $assign_user r_access_menu
     echo -e "\nCurrent User Assignments: $assign_user\n"
     grep -H $assign_user /home/ironjump/endpoints/chroot/*/access_control |awk -F'[:/]' '{print "    --> "$6"\n        --> "$8" ("$10":"$11":"$12")"}'
     echo -e "\n"
@@ -1667,7 +1677,7 @@ assignments_revoke_by_user() {
 
             #Check if endpoint exists
             #TODO: Fix redirection on error
-            local_account_check endpoints $assign_endpoint
+            local_account_check endpoints $assign_endpoint r_access_menu
 
             #Prompt for confirmation
             echo -e "\nUser $assign_user will be revoked from endpoint $assign_endpoint."
@@ -1726,7 +1736,7 @@ assignments_revoke_by_endpoint() {
 
     #Check if endpoint exists
     #TODO: Fix redirection on error
-    local_account_check endpoints $assign_endpoint
+    local_account_check endpoints $assign_endpoint r_access_menu
 
     echo -e "Currently Assigned User Account: $assign_endpoint\n------------------------\n"
     cat /home/ironjump/endpoints/chroot/$assign_endpoint/access_control |awk '{print "    --> "$1" ("$3":"$4":"$5")"}'
@@ -1736,7 +1746,7 @@ assignments_revoke_by_endpoint() {
 
     #Check user account
     #TODO: Fix redirection on error
-    local_account_check users $assign_user
+    local_account_check users $assign_user r_access_menu
     nav_breaker_bar
     echo "1. Revoke Assignments for User"
     echo "2. Revoke Assignments for ALL Users"
@@ -1807,7 +1817,7 @@ access_control_mass_assignments(){
 
     #Check user account
     #TODO: Fix redirection on error
-    local_account_check users $assign_user
+    local_account_check users $assign_user r_access_menu
     nav_breaker_bar
     echo "1. Allow User Access to ALL Endpoints"
     echo "2. Revoke User Access from ALL Endpoints"
