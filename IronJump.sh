@@ -13,6 +13,11 @@ IRONJUMP_END_GROUP="ironjump_endpoints"
 IRONJUMP_CHROOT_ENV="/home/ironjump"
 PASSWORD_LENGTH="64"
 PASSWORD_ROTATION="8"
+SSH_CONF_IRONJUMP="/etc/ssh/sshd_config.d/01-ironjump-ssh.conf"
+SSH_CONF_IRONJUMP_BACKUP="/etc/ssh/sshd_config.d/01-ironjump-ssh.conf.bak-$(date +%F-%H%M%S)"
+SSH_CONF_SYSTEM="/etc/ssh/sshd_config"
+SSH_CONF_SYSTEM_BACKUP="/etc/ssh/sshd_config.bak"
+SSH_ENCRYPT_CONF="/etc/ssh/sshd_config.d/01-ironjump-ssh_crypt.conf"
 
 # Ensure the script is run as root
 if [[ $EUID -ne 0 ]]; then
@@ -30,14 +35,6 @@ else
     cd $SCRIPT_DIR
 fi
 
-# Check for ironjump-ssh.conf file
-if [[ -f ./ironjump-ssh.conf ]]; then
-    source ./ironjump-ssh.conf
-else
-    echo "ironjump-ssh.conf must be in the working directory to continue."
-    exit 1
-fi
-
 # Check for functions file
 if [[ -f ./functions ]]; then
     source ./functions
@@ -45,6 +42,15 @@ else
     echo "The functions file must be in the working directory to continue."
     exit 1
 fi
+
+#Create Symbolic Link for IronJump
+clear
+if [[ ! -e /bin/ironjump ]]; then
+    ln -s /opt/IronJump/IronJump.sh /bin/ironjump
+    echo -e "\nA shortcut has been created for IronJump. You can now run \"sudo ironjump\" from anywhere on the command line."
+    read -p "Press [ENTER] to continue to IronJump." continue
+fi
+
 
 ### Menu Construction ###
 nav_top_bar() {

@@ -197,19 +197,31 @@ f_ssh_hard_os_selection() {
 
 f_ssh_hard_check() {
     local choice
-    if [[ -f $SSH_CONFIG_FILE ]]; then
-        echo -e "\r\n\tFound SSH Configuration File"
+    #Check for System's SSH Configuration File (1 of 2)
+    if [[ -f $SSH_CONF_SYSTEM ]]; then
+        echo -e "\r\n\tFound SSH Service Configuration File"
         echo -e "\t  !Recommended Action: Would you like to make a backup? (y/n)"
         echo -e "\t-------------------"
         read -p "Enter your choice: " choice
         case "$choice" in
-            Yes|yes|Y|y) echo -e "\r\n\tMaking backup..." ; cp $SSH_CONFIG_FILE $SSH_CONFIG_BACKUP ;;
+            Yes|yes|Y|y) echo -e "\r\n\tMaking backup..." ; cp $SSH_CONF_SYSTEM $SSH_CONF_SYSTEM_BACKUP ;;
             No|no|N|n) echo -e "\r\n\tSkipping backup..." ;;
             *) invalid_choice ; sleep 1 ; f_ssh_hard_check ;; 
         esac
-        sleep 1
     else
         echo -e "\r\n\tSSH Config File Not Found. Returning to Main Menu." ; sleep 1 ; main_menu
+    fi
+    #Check for IronJump's SSH Configuration File (2 of 2)
+    if [[ -f $SSH_CONF_IRONJUMP ]]; then
+        echo -e "\r\n\tFound IronJump SSH Service Configuration File"
+        echo -e "\t  !Recommended Action: Would you like to make a backup? (y/n)"
+        echo -e "\t-------------------"
+        read -p "Enter your choice: " choice
+        case "$choice" in
+            Yes|yes|Y|y) echo -e "\r\n\tMaking backup..." ; cp $SSH_CONF_IRONJUMP $SSH_CONF_IRONJUMP_BACKUP ;;
+            No|no|N|n) echo -e "\r\n\tSkipping backup..." ;;
+            *) invalid_choice ; sleep 1 ; f_ssh_hard_check ;; 
+        esac
     fi
 }
 
@@ -246,39 +258,39 @@ f_ssh_hard_regen_hostkeys_2() {
 }
 
 f_ssh_hard_regen_hostkeys_3() {
-    local ssh_audit_conf="/etc/systemd/system/sshd-keygen.service.d/ssh-audit.conf"
+    local ssh_audit_conf="/etc/systemd/system/sshd-keygen.service.d/01-ironjump-ssh_crypt.conf"
     f_ssh_hard_regen_hostkeys_1
     mkdir -p /etc/systemd/system/sshd-keygen.service.d
     echo "[Unit]" > $ssh_audit_conf
-    echo "ConditionFileNotEmpty=" >> $ssh_audit_conf
+    echo "ConditionFileNotEmpty=" >> $ssh_audit_cong
     echo "ConditionFileNotEmpty=!/etc/ssh/ssh_host_ed25519_key" >>$ssh_audit_conf
     systemctl daemon-reload
     f_ssh_hard_regen_hostkeys_2
 }
 
 f_ssh_hard_set_hostkeys() {
-    #Enable RSA hostkey
-    if [[ $(grep "^\#HostKey /etc/ssh/ssh_host_rsa_key" < $SSH_CONFIG_FILE |wc -l) -gt 0 ]]; then
-        sed -i 's/^\#HostKey \/etc\/ssh\/ssh_host_rsa_key$/HostKey \/etc\/ssh\/ssh_host_rsa_key/g' $SSH_CONFIG_FILE
+    #Enable RSA hostkey in system's sshd_conf file (Not in IronJump SSH Conf)
+    if [[ $(grep "^\#HostKey /etc/ssh/ssh_host_rsa_key" < $SSH_CONF_SYSTEM |wc -l) -gt 0 ]]; then
+        sed -i 's/^\#HostKey \/etc\/ssh\/ssh_host_rsa_key$/HostKey \/etc\/ssh\/ssh_host_rsa_key/g' $SSH_CONF_SYSTEM
     else
-        echo -e "\nHostKey /etc/ssh/ssh_host_rsa_key\n" >> $SSH_CONFIG_FILE
+        echo -e "\nHostKey /etc/ssh/ssh_host_rsa_key\n" >> $SSH_CONF_SYSTEM
     fi
 
     #Enable ED25519 hostkey
-    if [[ $(grep "^\#HostKey /etc/ssh/ssh_host_ed25519_key" < $SSH_CONFIG_FILE |wc -l) -gt 0 ]]; then
-        sed -i 's/^\#HostKey \/etc\/ssh\/ssh_host_ed25519_key$/HostKey \/etc\/ssh\/ssh_host_ed25519_key/g' $SSH_CONFIG_FILE
+    if [[ $(grep "^\#HostKey /etc/ssh/ssh_host_ed25519_key" < $SSH_CONF_SYSTEM |wc -l) -gt 0 ]]; then
+        sed -i 's/^\#HostKey \/etc\/ssh\/ssh_host_ed25519_key$/HostKey \/etc\/ssh\/ssh_host_ed25519_key/g' $SSH_CONF_SYSTEM
     else
-        echo -e "\nHostKey /etc/ssh/ssh_host_ed25519_key\n" >> $SSH_CONFIG_FILE
+        echo -e "\nHostKey /etc/ssh/ssh_host_ed25519_key\n" >> $SSH_CONF_SYSTEM
     fi
 
     #Disable DSA hostkey
-    if [[ $(grep "^\HostKey /etc/ssh/ssh_host_dsa_key" < $SSH_CONFIG_FILE |wc -l) -gt 0 ]]; then
-        sed -i 's/^\HostKey \/etc\/ssh\/ssh_host_dsa_key$/\#HostKey \/etc\/ssh\/ssh_host_dsa_key/g' $SSH_CONFIG_FILE
+    if [[ $(grep "^\HostKey /etc/ssh/ssh_host_dsa_key" < $SSH_CONF_SYSTEM |wc -l) -gt 0 ]]; then
+        sed -i 's/^\HostKey \/etc\/ssh\/ssh_host_dsa_key$/\#HostKey \/etc\/ssh\/ssh_host_dsa_key/g' $SSH_CONF_SYSTEM
     fi
 
     #Disable ECDSA hostkey
-    if [[ $(grep "^\HostKey /etc/ssh/ssh_host_ecdsa_key" < $SSH_CONFIG_FILE |wc -l) -gt 0 ]]; then
-        sed -i 's/^\HostKey \/etc\/ssh\/ssh_host_ecdsa_key$/\#HostKey \/etc\/ssh\/ssh_host_ecdsa_key/g' $SSH_CONFIG_FILE
+    if [[ $(grep "^\HostKey /etc/ssh/ssh_host_ecdsa_key" < $SSH_CONF_SYSTEM |wc -l) -gt 0 ]]; then
+        sed -i 's/^\HostKey \/etc\/ssh\/ssh_host_ecdsa_key$/\#HostKey \/etc\/ssh\/ssh_host_ecdsa_key/g' $SSH_CONF_SYSTEM
     fi
 }
 
@@ -292,29 +304,57 @@ f_ssh_hard_dh_moduli() {
 }
 
 f_ssh_set_configuration() {
-    sed -i "s/^\#Port .*$\|^Port .*$/Port $SSH_Port/" $SSH_CONFIG_FILE
-    sed -i "s/^\#RekeyLimit .*$\|^RekeyLimit .*$/RekeyLimit $SSH_RekeyLimit/" $SSH_CONFIG_FILE
-    sed -i "s/^\#LogLevel .*$\|^LogLevel .*$/LogLevel $SSH_LogLevel/" $SSH_CONFIG_FILE
-    sed -i "s/^\#LoginGraceTime .*$\|^LoginGraceTime .*$/LoginGraceTime $SSH_LoginGraceTime/" $SSH_CONFIG_FILE
-    sed -i "s/^\#MaxAuthTries .*$\|^MaxAuthTries .*$/MaxAuthTries $SSH_MaxAuthTries/" $SSH_CONFIG_FILE
-    sed -i "s/^\#MaxSessions .*$\|^MaxSessions .*$/MaxSessions $SSH_MaxSessions/" $SSH_CONFIG_FILE
-    sed -i "s/^\#PermitRootLogin .*$\|^PermitRootLogin .*$/PermitRootLogin $SSH_PermitRootLogin/" $SSH_CONFIG_FILE
-    sed -i "s/^\#PubkeyAuthentication .*$\|^PubkeyAuthentication .*$/PubkeyAuthentication $SSH_PubkeyAuthentication/" $SSH_CONFIG_FILE
-    sed -i "s/^\#PasswordAuthentication .*$\|^PasswordAuthentication .*$/PasswordAuthentication $SSH_PasswordAuthentication/" $SSH_CONFIG_FILE
-    sed -i "s/^\#PermitEmptyPasswords .*$\|^PermitEmptyPasswords .*$/PermitEmptyPasswords $SSH_PermitEmptyPasswords/" $SSH_CONFIG_FILE
-    sed -i "s/^\#AllowAgentForwarding .*$\|^AllowAgentForwarding .*$/AllowAgentForwarding $SSH_AllowAgentForwarding/" $SSH_CONFIG_FILE
-    sed -i "s/^\#AllowTcpForwarding .*$\|^AllowTcpForwarding .*$/AllowTcpForwarding $SSH_AllowTcpForwarding/" $SSH_CONFIG_FILE
-    sed -i "s/^\#GatewayPorts .*$\|^GatewayPorts .*$/GatewayPorts $SSH_GatewayPorts/" $SSH_CONFIG_FILE
-    sed -i "s/^\#X11Forwarding .*$\|^X11Forwarding .*$/X11Forwarding $SSH_X11Forwarding/" $SSH_CONFIG_FILE
-    sed -i "s/^\#PermitTTY .*$\|^PermitTTY .*$/PermitTTY $SSH_PermitTTY/" $SSH_CONFIG_FILE
-    sed -i "s/^\#TCPKeepAlive .*$\|^TCPKeepAlive .*$/TCPKeepAlive $SSH_TCPKeepAlive/" $SSH_CONFIG_FILE
-    sed -i "s/^\#PermitUserEnvironment .*$\|^PermitUserEnvironment .*$/PermitUserEnvironment $SSH_PermitUserEnvironment/" $SSH_CONFIG_FILE
-    sed -i "s/^\#Compression .*$\|^Compression .*$/Compression $SSH_Compression/" $SSH_CONFIG_FILE
-    sed -i "s/^\#ClientAliveInterval .*$\|^ClientAliveInterval .*$/ClientAliveInterval $SSH_ClientAliveInterval/" $SSH_CONFIG_FILE
-    sed -i "s/^\#ClientAliveCountMax .*$\|^ClientAliveCountMax .*$/ClientAliveCountMax $SSH_ClientAliveCountMax/" $SSH_CONFIG_FILE
-    sed -i "s/^\#UseDNS .*$\|^UseDNS .*$/UseDNS $SSH_UseDNS/" $SSH_CONFIG_FILE
-    sed -i "s/^\#PermitTunnel .*$\|^PermitTunnel .*$/PermitTunnel $SSH_PermitTunnel/" $SSH_CONFIG_FILE
-    sed -i "s/^\#AcceptEnv .*$\|^AcceptEnv .*$/AcceptEnv ac_host LANG LC_\* /" $SSH_CONFIG_FILE
+    local default_pass_auth="yes"
+    local continue
+    local choice
+
+    #ASK FOR PASSWORD AUTHENTICAITON TO LOCAL USERS
+    nav_breaker_bar
+    echo -e "\n\n[WARNING] By default password authentication is set to \"YES\" to avoide lockout."
+    echo -e "  This is \!\!NOT\!\! recommended. You can change it to \"NO\" during setup. However,"
+    echo -e "  if you are not setup with SSH Public Keys for remote access, you will lock yourself"
+    echo -e "  out from SSH access\!\r\n --> Choose \"YES\" to allow password authenticaiton, -OR-\n  --> Choose \"NO\" to disable password authentication"
+    nav_breaker_bar
+    while true; do
+        read -p "Do you want to ALLOW password authentication for SSH services? (yes/no) " choice
+        case $choice in
+            YES|Yes|yes|Y|y)
+                echo -e "\nPasswordAuthentication set to \"YES\"\n" ; default_pass_auth="yes"
+                break
+                ;;
+            NO|No|no|N|n)
+                echo -e "\nPasswordAuthentication set to \"NO\"\n" ; default_pass_auth="no"
+                break
+                ;;
+            *) echo "Invalid input. Please enter 'yes' or 'no'." ;;
+        esac
+    done
+    echo -e "You can change this by editing $SSH_CONF_IRONJUMP and restarting the SSH service at any time."
+    read -p "Press [ENTER] to continue." continue
+
+    #Build /etc/ssh/sshd_config.d/01-ironjump-ssh.conf
+    echo -e "Port=\"22\"" >$SSH_CONF_IRONJUMP
+    echo -e "RekeyLimit=\"1G 1h\"" >>$SSH_CONF_IRONJUMP
+    echo -e "LogLevel=\"VERBOSE\"" >>$SSH_CONF_IRONJUMP
+    echo -e "LoginGraceTime=\"1m\"" >>$SSH_CONF_IRONJUMP
+    echo -e "PermitRootLogin=\"no\"" >>$SSH_CONF_IRONJUMP
+    echo -e "MaxAuthTries=\"3\"" >>$SSH_CONF_IRONJUMP
+    echo -e "MaxSessions=\"15\"" >>$SSH_CONF_IRONJUMP
+    echo -e "PubkeyAuthentication=\"yes\"" >>$SSH_CONF_IRONJUMP
+    echo -e "PasswordAuthentication=\"$default_pass_auth\"" >>$SSH_CONF_IRONJUMP
+    echo -e "PermitEmptyPasswords=\"no\"" >>$SSH_CONF_IRONJUMP
+    echo -e "AllowAgentForwarding=\"no\"" >>$SSH_CONF_IRONJUMP
+    echo -e "AllowTcpForwarding=\"no\"" >>$SSH_CONF_IRONJUMP
+    echo -e "GatewayPorts=\"no\"" >>$SSH_CONF_IRONJUMP
+    echo -e "X11Forwarding=\"no\"" >>$SSH_CONF_IRONJUMP
+    echo -e "PermitTTY=\"yes\"" >>$SSH_CONF_IRONJUMP
+    echo -e "TCPKeepAlive=\"yes\"" >>$SSH_CONF_IRONJUMP
+    echo -e "PermitUserEnvironment=\"yes\"" >>$SSH_CONF_IRONJUMP
+    echo -e "Compression=\"no\"" >>$SSH_CONF_IRONJUMP
+    echo -e "ClientAliveInterval=\"600\"" >>$SSH_CONF_IRONJUMP
+    echo -e "ClientAliveCountMax=\"3\"" >>$SSH_CONF_IRONJUMP
+    echo -e "UseDNS=\"no\"" >>$SSH_CONF_IRONJUMP
+    echo -e "PermitTunnel=\"yes\"" >>$SSH_CONF_IRONJUMP
 }
 
 f_ssh_hard_s1() {
@@ -326,78 +366,78 @@ f_ssh_hard_s1() {
 
 f_ssh_hard_s2() {
     #Specific hardening commands for Ubuntu 24.04
-    echo -e "# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms sntrup761x25519-sha512@openssh.com,gss-curve25519-sha256-,curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256,gss-group16-sha512-,diffie-hellman-group16-sha512\n\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-gcm@openssh.com,aes128-ctr\n\nMACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com\n\nRequiredRSASize 3072\n\nHostKeyAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nCASignatureAlgorithms sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nGSSAPIKexAlgorithms gss-curve25519-sha256-,gss-group16-sha512-\n\nHostbasedAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nPubkeyAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256" > /etc/ssh/sshd_config.d/ssh-audit_hardening.conf
+    echo -e "# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms sntrup761x25519-sha512@openssh.com,gss-curve25519-sha256-,curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256,gss-group16-sha512-,diffie-hellman-group16-sha512\n\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-gcm@openssh.com,aes128-ctr\n\nMACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com\n\nRequiredRSASize 3072\n\nHostKeyAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nCASignatureAlgorithms sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nGSSAPIKexAlgorithms gss-curve25519-sha256-,gss-group16-sha512-\n\nHostbasedAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nPubkeyAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256" > $SSH_ENCRYPT_CONF
     f_ssh_set_configuration
     systemctl restart ssh
 }
 
 f_ssh_hard_s3() {
     #Specific hardening commands for Ubuntu 22.04
-    echo -e "# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org,gss-curve25519-sha256-,diffie-hellman-group16-sha512,gss-group16-sha512-,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\n\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-gcm@openssh.com,aes128-ctr\n\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\n\nHostKeyAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nCASignatureAlgorithms sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nGSSAPIKexAlgorithms gss-curve25519-sha256-,gss-group16-sha512-\n\nHostbasedAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-256\n\nPubkeyAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-256" > /etc/ssh/sshd_config.d/ssh-audit_hardening.conf
+    echo -e "# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org,gss-curve25519-sha256-,diffie-hellman-group16-sha512,gss-group16-sha512-,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\n\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-gcm@openssh.com,aes128-ctr\n\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\n\nHostKeyAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nCASignatureAlgorithms sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nGSSAPIKexAlgorithms gss-curve25519-sha256-,gss-group16-sha512-\n\nHostbasedAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-256\n\nPubkeyAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-256" > $SSH_ENCRYPT_CONF
     f_ssh_set_configuration
     systemctl restart ssh
 }
 
 f_ssh_hard_s4() {
     #Specific hardening commands for Ubuntu 20.04
-    echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\nHostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,sk-ssh-ed25519-cert-v01@openssh.com,rsa-sha2-256,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com" > /etc/ssh/sshd_config.d/ssh-audit_hardening.conf
+    echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\nHostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,sk-ssh-ed25519-cert-v01@openssh.com,rsa-sha2-256,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com" > $SSH_ENCRYPT_CONF
     f_ssh_set_configuration
     service ssh restart
 }
 
 f_ssh_hard_s5() {
     #Specific hardening commands for Ubuntu 18.04
-    echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\nHostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com" >> $SSH_CONFIG_FILE
+    echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\nHostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com" > $SSH_ENCRYPT_CONF
     f_ssh_set_configuration
     service ssh restart
 }
 
 f_ssh_hard_s6() {
     #Specific hardening commands for Ubuntu 16.04
-    echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com" >> $SSH_CONFIG_FILE
+    echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com" > $SSH_ENCRYPT_CONF
     f_ssh_set_configuration
     service ssh restart
 }
 
 f_ssh_hard_s7() {
     #Specific hardening commands for Ubuntu 14.04
-    echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com" >> $SSH_CONFIG_FILE
+    echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com" > $SSH_ENCRYPT_CONF
     f_ssh_set_configuration
     service ssh restart
 }
 
 f_ssh_hard_s8() {
     #Specific hardening commands for Ubuntu Core 18
-    echo -e "\n# Only enable RSA and ED25519 host keys.\nHostKey /etc/ssh/ssh_host_rsa_key\nHostKey /etc/ssh/ssh_host_ed25519_key\n\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com" >> $SSH_CONFIG_FILE
+    echo -e "\n# Only enable RSA and ED25519 host keys.\nHostKey /etc/ssh/ssh_host_rsa_key\nHostKey /etc/ssh/ssh_host_ed25519_key\n\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com" > $SSH_ENCRYPT_CONF
     f_ssh_set_configuration
     service ssh reload
 }
 
 f_ssh_hard_s9() {
     #Specific hardening commands for Ubuntu Core 16
-    sed -i 's/^MACs \(.*\)$/\#MACs \1/g' $SSH_CONFIG_FILE
-    echo -e "\n# Restrict MAC algorithms, as per sshaudit.com hardening guide.\nMACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com" >> $SSH_CONFIG_FILE
+    sed -i 's/^MACs \(.*\)$/\#MACs \1/g' $SSH_CONF_SYSTEM
+    echo -e "\n# Restrict MAC algorithms, as per sshaudit.com hardening guide.\nMACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com" > $SSH_ENCRYPT_CONF
     f_ssh_set_configuration
     service ssh reload
 }
 
 f_ssh_hard_s10() {
     #Specific hardening commands for Debian Bookworm (Debian 12)
-    echo -e "# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\n KexAlgorithms sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org,gss-curve25519-sha256-,diffie-hellman-group16-sha512,gss-group16-sha512-,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\n\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-gcm@openssh.com,aes128-ctr\n\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\n\nHostKeyAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nRequiredRSASize 3072\n\nCASignatureAlgorithms sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nGSSAPIKexAlgorithms gss-curve25519-sha256-,gss-group16-sha512-\n\nHostbasedAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-256\n\nPubkeyAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-256\n\n" > /etc/ssh/sshd_config.d/ssh-audit_hardening.conf
+    echo -e "# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\n KexAlgorithms sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org,gss-curve25519-sha256-,diffie-hellman-group16-sha512,gss-group16-sha512-,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\n\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-gcm@openssh.com,aes128-ctr\n\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\n\nHostKeyAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nRequiredRSASize 3072\n\nCASignatureAlgorithms sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nGSSAPIKexAlgorithms gss-curve25519-sha256-,gss-group16-sha512-\n\nHostbasedAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-256\n\nPubkeyAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-256\n\n" > $SSH_ENCRYPT_CONF
     f_ssh_set_configuration
     service ssh restart
 }
 
 f_ssh_hard_s11() {
     #Specific hardening commands for Debian Bullseye (Debian 11)
-    echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\nHostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,sk-ssh-ed25519-cert-v01@openssh.com,rsa-sha2-256,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com" > /etc/ssh/sshd_config.d/ssh-audit_hardening.conf
+    echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\nHostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,sk-ssh-ed25519-cert-v01@openssh.com,rsa-sha2-256,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com" > $SSH_ENCRYPT_CONF
     f_ssh_set_configuration
     service ssh restart
 }
 
 f_ssh_hard_s12() {
     #Specific hardening commands for Debian Buster (Debian 10)
-    echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\nHostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-256,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com" >> $SSH_CONFIG_FILE
+    echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\nHostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-256,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com" > $SSH_ENCRYPT_CONF
     f_ssh_set_configuration
     service ssh restart
 }
@@ -419,22 +459,22 @@ f_ssh_hard_s14() {
 
 f_ssh_hard_s15() {
     #Specific hardening commands for RHEL 7 Server / CentOS 7 Server
-    echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group18-sha512,diffie-hellman-group16-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com" >> $SSH_CONFIG_FILE
+    echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group18-sha512,diffie-hellman-group16-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com" > $SSH_ENCRYPT_CONF
     f_ssh_set_configuration
     systemctl restart sshd.service
 }
 
 f_ssh_hard_s16() {
     #Specific hardening commands for pfSense 2.4
-    sed -i.bak 's/^MACs \(.*\)$/\#MACs \1/g' $SSH_CONFIG_FILE
-    echo "" | echo "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com" >> $SSH_CONFIG_FILE
+    sed -i.bak 's/^MACs \(.*\)$/\#MACs \1/g' $SSH_CONF_SYSTEM
+    echo "" | echo "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com" > $SSH_ENCRYPT_CONF
     f_ssh_set_configuration
     service sshd onerestart
 }
 
 f_ssh_hard_s17() {
     #Specific hardening commands for OpenBSD 6.2 Server
-    echo -e "# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com" >> $SSH_CONFIG_FILE
+    echo -e "# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com" > $SSH_ENCRYPT_CONF
     f_ssh_set_configuration
     kill -HUP `cat /var/run/sshd.pid`
 }
@@ -467,9 +507,11 @@ f_setup_ironjump() {
         echo -e "\r\n#Sudoers entry for IronJump Automation" >>/etc/sudoers
         echo '%ingot_registry ALL=(ALL) NOPASSWD: /usr/bin/gpasswd -d * ingot_registry, /usr/bin/gpasswd -a * ironjump_endpoints, /usr/bin/chsh -s /usr/sbin/nologin *' >>/etc/sudoers
     fi
+
+    #Add IronJump SSH Match statements to /etc/ssh/sshd_config.d/01-ironjump-ssh.conf.
     echo "Adding groups to SSH Configuration."; sleep 1
-    sed -i "/^Match Group $IRONJUMP_SSH_GROUP/,/\#END MATCH GROUP/d" $SSH_CONFIG_FILE
-    cat << EOF >> $SSH_CONFIG_FILE
+    sed -i "/^Match Group $IRONJUMP_SSH_GROUP/,/\#END MATCH GROUP/d" $SSH_CONF_IRONJUMP
+    cat << EOF >> $SSH_CONF_IRONJUMP
 Match Group $IRONJUMP_SSH_GROUP
     ChrootDirectory $IRONJUMP_CHROOT_ENV/users/chroot
     ForceCommand /bin/false
@@ -482,8 +524,8 @@ Match Group $IRONJUMP_SSH_GROUP
     Subsystem sftp none
 #END MATCH GROUP
 EOF
-    sed -i "/^Match Group $IRONJUMP_SRV_GROUP/,/\#END MATCH GROUP/d" $SSH_CONFIG_FILE
-    cat << EOF >> $SSH_CONFIG_FILE
+    sed -i "/^Match Group $IRONJUMP_SRV_GROUP/,/\#END MATCH GROUP/d" $SSH_CONF_IRONJUMP
+    cat << EOF >> $SSH_CONF_IRONJUMP
 Match Group $IRONJUMP_SRV_GROUP
     ChrootDirectory $IRONJUMP_CHROOT_ENV/servers/chroot
     ForceCommand /bin/false
@@ -496,8 +538,8 @@ Match Group $IRONJUMP_SRV_GROUP
     Subsystem sftp none
 #END MATCH GROUP
 EOF
-    sed -i "/^Match Group $IRONJUMP_END_GROUP/,/\#END MATCH GROUP/d" $SSH_CONFIG_FILE
-    cat << EOF >> $SSH_CONFIG_FILE
+    sed -i "/^Match Group $IRONJUMP_END_GROUP/,/\#END MATCH GROUP/d" $SSH_CONF_IRONJUMP
+    cat << EOF >> $SSH_CONF_IRONJUMP
 Match Group $IRONJUMP_END_GROUP
     ChrootDirectory $IRONJUMP_CHROOT_ENV/endpoints/chroot
     ForceCommand /bin/false
@@ -510,8 +552,8 @@ Match Group $IRONJUMP_END_GROUP
     Subsystem sftp none
 #END MATCH GROUP
 EOF
-    sed -i "/^Match Group ingot_registry/,/\#END MATCH GROUP/d" $SSH_CONFIG_FILE
-    cat << EOF >> $SSH_CONFIG_FILE
+    sed -i "/^Match Group ingot_registry/,/\#END MATCH GROUP/d" $SSH_CONF_IRONJUMP
+    cat << EOF >> $SSH_CONF_IRONJUMP
 Match Group ingot_registry
     ForceCommand ~/ingot-registration.sh
     PermitTTY no
@@ -522,8 +564,8 @@ Match Group ingot_registry
     Subsystem sftp none
 #END MATCH GROUP
 EOF
-    sed -i "/^Match User ironsync/,/\#END MATCH USER/d" $SSH_CONFIG_FILE
-    cat << EOF >> $SSH_CONFIG_FILE
+    sed -i "/^Match User ironsync/,/\#END MATCH USER/d" $SSH_CONF_IRONJUMP
+    cat << EOF >> $SSH_CONF_IRONJUMP
 Match User ironsync
     ForceCommand /bin/ironjump-sync.sh
     PermitTTY no
@@ -557,7 +599,6 @@ EOF
     #Final Permissions Check
     chown -R :ironsync /home/ironjump
     echo "Building cron jobs."
-    #f_cron_pass_rotation
     read -p "Setup Complete. Press [ENTER] to continue."
 }
 
@@ -646,40 +687,6 @@ f_cron_setup() {
     echo "Cron setup complete!"
 }
 
-f_cron_pass_rotation() {
-    f_cron_setup
-    cat <<EOF > /bin/ironjump-pass-rotation.sh
-#!/bin/bash
-# Password rotation for IronJump Downstream Bastions, Endpoints, and SSH Users
-IRONJUMP_SSH_GROUP="ironjump_users"
-IRONJUMP_SRV_GROUP="ironjump_servers"
-IRONJUMP_END_GROUP="ironjump_endpoints"
-PASSWORD_LENGTH="64"
-
-
-### Password Length and Rotation
-### ============================
-## NOTE: IronJump Servers (Upstream or Downstream): devices [endpoints/ingots], servers, and users account passwords are not used. Admins should
-#        use Password/Passphrase-protected SSH keys for authentication. This is due to the /bin/false shell. IronJump accounts are never
-#        used for management of the bastion servers. Furthermore, the endpoints that connect to an IronJump bastion are treated similarly.
-#        This is to prevent elevating privileges or connecting to other hosts in the IronJump ecosystem. Endpoints and Downstream IronJump
-#        bastions are connected without password protected keys. Therefore, it is vital to ensure that someone cannot guess a
-#        password for the account in use. By rotating the passwords every 8 hours, the use of passwords is effectively disabled.
-
-## NOTE: It is not recommended to change these settings unless there is a good reason. There is a passcode generator function in the
-#        IronJump menu under Endpoint Management to create or reset a password of a new or existing user directly on the host.
-
-## NOTE: To change the rotation period. Directly edit the cron job from an elevated account.
-
-### -----------------------------
-
-ironjump_change_password() {
-    account=\$1
-    NEW_PASSWORD=\$(tr -dc 'A-Za-z0-9\~\!\@\#\$\%\^\&\*\(\)\_\+\-\=\[\]\{\}\;\:\<\>\,\.\?\/' < /dev/urandom |head -c \$PASSWORD_LENGTH)
-    echo "\$account:\$NEW_PASSWORD" | chpasswd
-    unset NEW_PASSWORD
-}
-
 for user in \$(getent group \$IRONJUMP_SSH_GROUP |awk -F: '{print \$4}' | tr ',' ' '); do ironjump_change_password \$user; done
 for server in \$(getent group \$IRONJUMP_SRV_GROUP |awk -F: '{print \$4}' | tr ',' ' '); do ironjump_change_password \$server; done
 for endpoint in \$(getent group \$IRONJUMP_END_GROUP |awk -F: '{print \$4}' | tr ',' ' '); do ironjump_change_password \$endpoint; done
@@ -694,28 +701,26 @@ EOF
     read -p "Press [ENTER] to continue." continue
 }
 
-# TODO: This is moving to /etc/ssh/sshd_config.d/ironjump; still necessary, but needs update.
 view_configuration() {
     local continue
-    if [[ -f ./ironjump-ssh.conf ]]; then
-        cat ./ironjump-ssh.conf |grep -v "^#" |grep -v ^$
+    if [[ -f $SSH_CONF_IRONJUMP ]]; then
+        cat $SSH_CONF_IRONJUMP |grep -v ^$
         nav_breaker_bar
         read -p "Press [ENTER] to continue."
     else
-        echo "Configuration file not in current working director."
+        echo "Configuration file not found."
         nav_breaker_bar
         read -p "Press [ENTER] to continue." continue
     fi
     deployment_menu
 }
 
-# TODO: This is moving to /etc/ssh/sshd_config.d/ironjump; still necessary, but needs update.
 mod_configuration() {
     local continue
-    if [[ -f ./ironjump-ssh.conf ]]; then
-        vi ./ironjump-ssh.conf
+    if [[ -f $SSH_CONF_IRONJUMP ]]; then
+        vi $SSH_CONF_IRONJUMP
     else
-        echo "Configuration file not in current working director."
+        echo "Configuration file not found."
         nav_breaker_bar
         read -p "Press [ENTER] to continue." continue
     fi
@@ -892,7 +897,7 @@ usr_mgmt_delete() {
 usr_mgmt_mod_pubkey() {
     local usr_set_update_pubkey_name
     local usr_set_update_pubkey_key
-    local 
+    local
     local continue
     local choice
     clear
@@ -919,7 +924,6 @@ usr_mgmt_mod_pubkey() {
         echo $ssh_key > /home/ironjump/users/chroot/$usr_set_update_pubkey_name/.ssh/authorized_keys
         chown $usr_set_update_pubkey_name:$usr_set_update_pubkey_name /home/ironjump/users/chroot/$usr_set_update_pubkey_name/.ssh/authorized_keys
         chmod 0600 /home/ironjump/users/chroot/$usr_set_update_pubkey_name/.ssh/authorized_keys
-        # TODO: Needs Review - If key is updated in all access control files, will it update their access to endpoints.
         local access_control_path="/home/ironjump/endpoints/chroot/*/access_control"
         sed -i -E "s|^($usr_set_update_pubkey_name):[^:]+ ([^:]+):|\1:$ssh_key:|" $access_control_path
         echo -e "\nUser $usr_set_enable_name's public key has been modified!"
@@ -988,6 +992,7 @@ dev_mgmt_new() {
         read -p "Endpoint comment/description (Ex. Location, Environment, Client):  " ep_new_comment
     done
     local ep_base="ingot-"
+    #TODO [MAYBE - Ask Heather and Carlota's Opinion]: Make random number between 50000 and 59999
     local ep_num=$(ls -al /home/ironjump/endpoints/chroot |awk '{print $9}' |grep -v "^\\.\|^$" |tail -n 1 |tr -d $ep_base)
     if [[ -z $ep_num ]]; then
         ep_num="50000"
@@ -1283,7 +1288,6 @@ ep_connect() {
     #Update hosts file with new hostname; most Linux systems use the environment variable of HOST or HOSTNAME
     if [[ ! -z $HOST ]]; then sed -i "s/$HOST/$IRONJUMP_EP_NAME/g" /etc/hosts; fi
     if [[ ! -z $HOSTNAME ]]; then sed -i "s/$HOSTNAME/$IRONJUMP_EP_NAME/g" /etc/hosts; fi
-    ## TODO: Next 2 lines may not be necessary because the host will reboot after registration and these will be updated. Needs review.
     HOST=$IRONJUMP_EP_NAME
     HOSTNAME=$IRONJUMP_EP_NAME
     cat /root/ingot-keys |grep ironjump_key |cut -d '"' -f2 |sed -e 's/-\ /-\n/g' -e 's/\ -/\n-/g' >/root/.ssh/ironjump_key
@@ -1309,7 +1313,6 @@ echo -e "\r\nLast Update: \$(date)" >> /root/.ssh/access_control
 
 #Process access control file after synchronization
 ACCESS_FILE="/root/.ssh/access_control"
-# TODO: Promopt for sudo access instead of default allow
 SUDOERS_FILE="/etc/sudoers.d/ironjump_users"
 touch "\$SUDOERS_FILE"
 chmod 440 "\$SUDOERS_FILE"
