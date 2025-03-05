@@ -65,6 +65,8 @@ nav_head_menu(){
     clear
     echo "IronJump SSH Management"
     nav_top_bar
+    get_role_type
+    echo -e "## Role:\t$current_role"
     f_os_identity
     nav_top_bar
 
@@ -87,15 +89,51 @@ main_menu() {
     echo "1. Root Server Management"
     echo "2. Endpoint Device Management"
     echo "3. Access Control Management"
+    echo "4. Change Role Type"
     nav_breaker_bar
     echo "S. SSH Monitor Live Connections"
     echo "R. Reboot Server"
     echo -e "Q. Quit\r\n"
     read -p "Enter your choice: " choice
     case "$choice" in
-        1) root_server_mgmt_menu ; main_menu ;;
-        2) endpoint_device_mgmt_menu ; main_menu ;;
-        3) access_control_mgmt_menu ; main_menu ;;
+        1)
+            if [[ $current_role == "UNASSIGNED" ]] || [[ $current_role == "SERVER" ]] || [[ $current_role == "HYBRID" ]]; then
+                root_server_mgmt_menu
+                main_menu
+            else
+                nav_breaker_bar
+                echo -e "This host is configured as an Endoint. Please use the Endpoint Device Management Menu."
+                read -p "Press [ENTER] to continue." continue
+                main_menu
+            fi
+            ;;
+        2)
+            if [[ $current_role == "UNASSIGNED" ]] || [[ $current_role == "ENDPOINT" ]] || [[ $current_role == "HYBRID" ]]; then
+                endpoint_device_mgmt_menu
+                main_menu
+            else
+                nav_breaker_bar
+                echo -e "This host is configured as a Server. Please use the Root Server Management Menu."
+                read -p "Press [ENTER] to continue." continue
+                main_menu
+            fi
+            ;;
+        3)
+            if [[ $current_role == "SERVER" ]] || [[ $current_role == "HYBRID" ]]; then
+                access_control_mgmt_menu
+                main_menu
+            else
+                nav_breaker_bar
+                if [[ $current_role == "UNASSIGNED" ]]; then
+                    echo -e "This host has not been configured. Access Control is disabled."
+                else
+                    echo -e "This host is configured as an Endoint. Access Control is a Server or Hybrid function only."
+                fi
+                read -p "Press [ENTER] to continue." continue
+                main_menu
+            fi
+            ;;
+        4) change_role_type ; main_menu ;;
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
         Q|q) cd $OLDPWD ; exit 0 ;;

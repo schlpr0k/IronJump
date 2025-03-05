@@ -21,6 +21,63 @@ invalid_choice() {
     return 0
 }
 
+## Role Type Configuration
+get_role_type() {
+    if [[ -f /opt/IronJump/IronJump.role ]]; then
+        current_role=$(cat /opt/IronJump/IronJump.role |awk '{print $NF}')
+    else
+        current_role="UNASSIGNED"
+    fi
+}
+
+change_role_type() {
+    local current_role
+    local new_role_choice
+    local choice
+    local continue
+
+    if [[ -f /opt/IronJump/IronJump.role ]]; then
+        current_role=$(cat /opt/IronJump/IronJump.role |awk '{print $NF}')
+    else
+        echo -e "\nThis host has not been configured with a role.\nPlease configure this host as a Server or Endpoint first."
+        nav_breaker_bar
+        read -p "Press [ENTER] to return to Main Menu" continue
+        main_menu
+    fi
+
+    clear
+    echo "IronJump SSH Management - Change Role Wizard"
+    nav_top_bar
+    echo -e "Current Role: $current_role"
+    echo -e "\nSelect a new role for this host:"
+    echo "1. SERVER"
+    echo "2. ENDPOINT"
+    echo "3. HYBRID"
+    nav_breaker_bar
+    echo "P. Return to Previous Menu"
+    echo -e "Q. Quit\r\n"
+    read -p "Enter your choice: " choice
+    case $choice in
+        1|2|3)
+            if [[ $choice == "1" ]]; then
+                new_role_choice="SERVER"
+            elif [[ $choice == "2" ]]; then
+                new_role_choice="ENDPOINT"
+            else
+                new_role_choice="HYBRID"
+            fi
+            echo -e "## Role: $new_role_choice" > /opt/IronJump/IronJump.role
+            echo -e "\n\nRole Changed to: $new_role_choice"
+            nav_breaker_bar
+            read -p "Press [ENTER] to continue" continue
+            main_menu
+            ;;
+        P|p) main_menu ;;
+        Q|q) exit 0 ;;
+        *) invalid_choice ; change_role_type ;;
+    esac
+}
+
 ## OS Identification
 f_os_identity() {
     #Detect OS and Version
@@ -481,6 +538,7 @@ f_ssh_hard_s17() {
 
 ## Deploy IronJump Root Server
 f_setup_ironjump() {
+    local roletype
     f_sshd_setup
     f_diceware_setup
     harden_ssh_service
@@ -599,6 +657,9 @@ EOF
     #Final Permissions Check
     chown -R :ironsync /home/ironjump
     echo "Building cron jobs."
+    if [[ -f /opt/IronJump/IronJump.role ]]; then roletype=$(cat /opt/IronJump/IronJump.role |awk '{print $NF}'); else roletype="UNASSIGNED"; fi
+    if [[ ! $roletype == "HYBRID" ]]; then echo -e "## Role:\tSERVER" > /opt/IronJump/IronJump.role; fi
+    chmod 600 /opt/IronJump/IronJump.role
     read -p "Setup Complete. Press [ENTER] to continue."
 }
 
@@ -1244,6 +1305,7 @@ dev_mgmt_set_expire() {
 
 #ep_mgmt_menu
 ep_connect() {
+    local roletype
     local ironjump_srv_ip
     local ironjump_ep_name
     local has_token
@@ -1387,7 +1449,10 @@ EOF
     (crontab -l 2>/dev/null; echo "@reboot /bin/ironjump-sync.sh") | crontab -
     (crontab -l 2>/dev/null; echo "*/5 * * * * /bin/ironjump-sync.sh") | crontab -
 
-    read -p "The endpoint will now reboot. Press [ENTER] to continue." continue
+    #Set Endpoint Role
+    if [[ -f /opt/IronJump/IronJump.role ]]; then roletype=$(cat /opt/IronJump/IronJump.role |awk '{print $NF}'); else roletype="UNASSIGNED"; fi
+    if [[ ! $roletype == "HYBRID" ]]; then echo -e "## Role:\tENDPOINT" > /opt/IronJump/IronJump.role; fi
+    read -p "This endpoint will now reboot. Press [ENTER] to continue." continue
     shutdown -r now
     ep_mgmt_menu
 }
