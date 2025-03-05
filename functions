@@ -258,7 +258,7 @@ f_ssh_hard_regen_hostkeys_2() {
 }
 
 f_ssh_hard_regen_hostkeys_3() {
-    local ssh_audit_conf="/etc/systemd/system/sshd-keygen.service.d/01-ironjump-ssh_crypt.conf"
+    local ssh_audit_conf="/etc/systemd/system/sshd-keygen.service.d/zz-ironjump-crypt.conf"
     f_ssh_hard_regen_hostkeys_1
     mkdir -p /etc/systemd/system/sshd-keygen.service.d
     echo "[Unit]" > $ssh_audit_conf
@@ -332,29 +332,29 @@ f_ssh_set_configuration() {
     echo -e "You can change this by editing $SSH_CONF_IRONJUMP and restarting the SSH service at any time."
     read -p "Press [ENTER] to continue." continue
 
-    #Build /etc/ssh/sshd_config.d/01-ironjump-ssh.conf
-    echo -e "Port=\"22\"" >$SSH_CONF_IRONJUMP
-    echo -e "RekeyLimit=\"1G 1h\"" >>$SSH_CONF_IRONJUMP
-    echo -e "LogLevel=\"VERBOSE\"" >>$SSH_CONF_IRONJUMP
-    echo -e "LoginGraceTime=\"1m\"" >>$SSH_CONF_IRONJUMP
-    echo -e "PermitRootLogin=\"no\"" >>$SSH_CONF_IRONJUMP
-    echo -e "MaxAuthTries=\"3\"" >>$SSH_CONF_IRONJUMP
-    echo -e "MaxSessions=\"15\"" >>$SSH_CONF_IRONJUMP
-    echo -e "PubkeyAuthentication=\"yes\"" >>$SSH_CONF_IRONJUMP
-    echo -e "PasswordAuthentication=\"$default_pass_auth\"" >>$SSH_CONF_IRONJUMP
-    echo -e "PermitEmptyPasswords=\"no\"" >>$SSH_CONF_IRONJUMP
-    echo -e "AllowAgentForwarding=\"no\"" >>$SSH_CONF_IRONJUMP
-    echo -e "AllowTcpForwarding=\"no\"" >>$SSH_CONF_IRONJUMP
-    echo -e "GatewayPorts=\"no\"" >>$SSH_CONF_IRONJUMP
-    echo -e "X11Forwarding=\"no\"" >>$SSH_CONF_IRONJUMP
-    echo -e "PermitTTY=\"yes\"" >>$SSH_CONF_IRONJUMP
-    echo -e "TCPKeepAlive=\"yes\"" >>$SSH_CONF_IRONJUMP
-    echo -e "PermitUserEnvironment=\"yes\"" >>$SSH_CONF_IRONJUMP
-    echo -e "Compression=\"no\"" >>$SSH_CONF_IRONJUMP
-    echo -e "ClientAliveInterval=\"600\"" >>$SSH_CONF_IRONJUMP
-    echo -e "ClientAliveCountMax=\"3\"" >>$SSH_CONF_IRONJUMP
-    echo -e "UseDNS=\"no\"" >>$SSH_CONF_IRONJUMP
-    echo -e "PermitTunnel=\"yes\"" >>$SSH_CONF_IRONJUMP
+    #Build /etc/ssh/sshd_config.d/zz-ironjump.conf
+    echo -e "Port 22" >$SSH_CONF_IRONJUMP
+    echo -e "RekeyLimit 1G 1h" >>$SSH_CONF_IRONJUMP
+    echo -e "LogLevel VERBOSE" >>$SSH_CONF_IRONJUMP
+    echo -e "LoginGraceTime 1m" >>$SSH_CONF_IRONJUMP
+    echo -e "PermitRootLogin no" >>$SSH_CONF_IRONJUMP
+    echo -e "MaxAuthTries 3" >>$SSH_CONF_IRONJUMP
+    echo -e "MaxSessions 15" >>$SSH_CONF_IRONJUMP
+    echo -e "PubkeyAuthentication yes" >>$SSH_CONF_IRONJUMP
+    echo -e "PasswordAuthentication $default_pass_auth" >>$SSH_CONF_IRONJUMP
+    echo -e "PermitEmptyPasswords no" >>$SSH_CONF_IRONJUMP
+    echo -e "AllowAgentForwarding no" >>$SSH_CONF_IRONJUMP
+    echo -e "AllowTcpForwarding no" >>$SSH_CONF_IRONJUMP
+    echo -e "GatewayPorts no" >>$SSH_CONF_IRONJUMP
+    echo -e "X11Forwarding no" >>$SSH_CONF_IRONJUMP
+    echo -e "PermitTTY yes" >>$SSH_CONF_IRONJUMP
+    echo -e "TCPKeepAlive yes" >>$SSH_CONF_IRONJUMP
+    echo -e "PermitUserEnvironment yes" >>$SSH_CONF_IRONJUMP
+    echo -e "Compression no" >>$SSH_CONF_IRONJUMP
+    echo -e "ClientAliveInterval 60" >>$SSH_CONF_IRONJUMP
+    echo -e "ClientAliveCountMax 5" >>$SSH_CONF_IRONJUMP
+    echo -e "UseDNS no" >>$SSH_CONF_IRONJUMP
+    echo -e "PermitTunnel yes" >>$SSH_CONF_IRONJUMP
 }
 
 f_ssh_hard_s1() {
@@ -508,7 +508,7 @@ f_setup_ironjump() {
         echo '%ingot_registry ALL=(ALL) NOPASSWD: /usr/bin/gpasswd -d * ingot_registry, /usr/bin/gpasswd -a * ironjump_endpoints, /usr/bin/chsh -s /usr/sbin/nologin *' >>/etc/sudoers
     fi
 
-    #Add IronJump SSH Match statements to /etc/ssh/sshd_config.d/01-ironjump-ssh.conf.
+    #Add IronJump SSH Match statements to /etc/ssh/sshd_config.d/zz-ironjump.conf.
     echo "Adding groups to SSH Configuration."; sleep 1
     sed -i "/^Match Group $IRONJUMP_SSH_GROUP/,/\#END MATCH GROUP/d" $SSH_CONF_IRONJUMP
     cat << EOF >> $SSH_CONF_IRONJUMP

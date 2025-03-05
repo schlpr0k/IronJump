@@ -13,11 +13,11 @@ IRONJUMP_END_GROUP="ironjump_endpoints"
 IRONJUMP_CHROOT_ENV="/home/ironjump"
 PASSWORD_LENGTH="64"
 PASSWORD_ROTATION="8"
-SSH_CONF_IRONJUMP="/etc/ssh/sshd_config.d/01-ironjump-ssh.conf"
-SSH_CONF_IRONJUMP_BACKUP="/etc/ssh/sshd_config.d/01-ironjump-ssh.conf.bak-$(date +%F-%H%M%S)"
+SSH_CONF_IRONJUMP="/etc/ssh/sshd_config.d/zz-ironjump.conf"
+SSH_CONF_IRONJUMP_BACKUP="/etc/ssh/sshd_config.d/zz-ironjump.conf.bak-$(date +%F-%H%M%S)"
 SSH_CONF_SYSTEM="/etc/ssh/sshd_config"
 SSH_CONF_SYSTEM_BACKUP="/etc/ssh/sshd_config.bak"
-SSH_ENCRYPT_CONF="/etc/ssh/sshd_config.d/01-ironjump-ssh_crypt.conf"
+SSH_ENCRYPT_CONF="/etc/ssh/sshd_config.d/zz-ironjump-crypt.conf"
 
 # Ensure the script is run as root
 if [[ $EUID -ne 0 ]]; then
