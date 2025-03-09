@@ -183,7 +183,17 @@ root_server_config_deploy_mgmt_menu() {
     case $choice in
         1) view_configuration ;;
         2) mod_configuration ;;
-        3) f_setup_ironjump ; main_menu ;;
+        3)
+            if [[ $(cat /opt/IronJump/IronJump.role |awk '{print $NF}') == "SERVER" ]]; then
+                echo -e "Server is already configured."
+                nav_breaker_bar
+                read -p "Press [ENTER] to return to Main Menu." continue
+                main_menu
+            else
+                f_setup_ironjump
+                main_menu
+            fi
+            ;;
         H|h) harden_ssh_service ; main_menu ;;
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
@@ -275,7 +285,16 @@ endpoint_device_mgmt_menu() {
     nav_breaker_bar
     nav_foot_menu
     case $choice in
-        1) ep_connect ;;
+        1)
+            if [[ $(cat /opt/IronJump/IronJump.role |awk '{print $NF}') == "ENDPOINT" ]]; then
+                echo -e "Endpoint is already configured. Remove IronJump.role file to re-register."
+                nav_breaker_bar
+                read -p "Press [ENTER] to return to Main Menu." continue
+                main_menu
+            else
+                ep_connect
+            fi
+            ;;
         2) ep_force_sync ;;
         3) harden_ssh_service ; main_menu ;;
         D|d) ep_smelt_dev ;;
