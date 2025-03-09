@@ -412,6 +412,7 @@ f_ssh_set_configuration() {
     echo -e "ClientAliveCountMax 5" >>$SSH_CONF_IRONJUMP
     echo -e "UseDNS no" >>$SSH_CONF_IRONJUMP
     echo -e "PermitTunnel yes" >>$SSH_CONF_IRONJUMP
+    echo -e "AcceptEnv LANG LC_* ac_host ac_key" >>$SSH_CONF_IRONJUMP
 }
 
 f_ssh_hard_s1() {
@@ -645,11 +646,19 @@ ac_host_file="/home/ironjump/endpoints/chroot/\$ac_host/access_control"
 if [[ -z \$ac_host ]]; then
     echo "Error: No hostname provided."
     exit 1
-fi
-if [[ ! -f "/home/ironjump/endpoints/chroot/\$ac_host/access_control" ]]; then
+elif [[ ! -f "/home/ironjump/endpoints/chroot/\$ac_host/access_control" ]]; then
     echo "Error: File does not exist or permission denied."
     exit 1
 fi
+
+if [[ -z \$ac_key ]]; then
+    echo "Error: No access control key provided."
+    exit 1
+elif [[ ! \$(cat /home/ironjump/endpoints/chroot/\$ac_host/.ssh/ac_key) == \$ac_key ]]; then
+    echo "Error: Access control key does not match host."
+    exit 1
+fi
+
 cat "\$ac_host_file"
 EOF
     chown root:ironsync /bin/ironjump-sync.sh
@@ -1119,13 +1128,19 @@ EOF
     sleep 1
     rm -f $dev_new_set_homedir/ironjump_key
     rm -f $dev_new_set_homedir/ironsync_key
+    #Create ac_key for synchronization validation
+    local ac_key_new=$(cat /dev/urandom | tr -dc 'A-Z2-79' | fold -w4 | head -n3 | paste -sd'-' -)
+    echo -e "$ac_key_new" >$dev_new_set_sshdir/ac_key
+    echo -e "ac_key="\"$ac_key_new\" >>$dev_new_set_homedir/ingot-keys
     #Set Permissions
     chown -R $ep_account_name:$ep_account_name $dev_new_set_homedir
-    chmod 700 "$dev_new_set_sshdir"
+    chmod 750 "$dev_new_set_sshdir"
     chmod 600 "$dev_new_set_authorized_keys"
     chown -R :ironsync $dev_new_set_homedir
     chown root:ironsync $dev_new_set_homedir/access_control
-    chmod 0740 $dev_new_set_homedir/access_control
+    chmod 0640 $dev_new_set_homedir/access_control
+    chown root:ironsync $dev_new_set_sshdir/ac_key
+    chmod 0440 $dev_new_set_sshdir/ac_key
     #Display Username and Password Instructions
     clear
     echo "IronJump - New Endpoint Account (Credentials)"
@@ -1354,8 +1369,14 @@ ep_connect() {
     source /etc/environment
     clear
     if [[ ! -d /root/.ssh ]]; then mkdir /root/.ssh; chmod 0700 /root/.ssh; fi
-    ssh $IRONJUMP_EP_NAME@$IRONJUMP_SERVER |tee /root/ingot-keys
+    ssh $IRONJUMP_EP_NAME@$IRONJUMP_SERVER > /root/ingot-keys
     echo "Migrating Keys"; sleep 5
+    if [[ ! -f /root/ingot-keys ]]; then
+        echo -e "  --> Ingot Key Missing. Aborting Process."
+        nav_breaker_bar
+        read -p "Press [ENTER] to return to Main Menu." continue
+        main_menu
+    fi
     echo $IRONJUMP_EP_NAME > /etc/hostname
     #Update hosts file with new hostname; most Linux systems use the environment variable of HOST or HOSTNAME
     if [[ ! -z $HOST ]]; then sed -i "s/$HOST/$IRONJUMP_EP_NAME/g" /etc/hosts; fi
@@ -1364,6 +1385,7 @@ ep_connect() {
     HOSTNAME=$IRONJUMP_EP_NAME
     cat /root/ingot-keys |grep ironjump_key |cut -d '"' -f2 |sed -e 's/-\ /-\n/g' -e 's/\ -/\n-/g' >/root/.ssh/ironjump_key
     cat /root/ingot-keys |grep ironsync_key |cut -d '"' -f2 |sed -e 's/-\ /-\n/g' -e 's/\ -/\n-/g' >/root/.ssh/ironsync_key
+    cat /root/ingot-keys |grep ac_key |cut -d '"' -f2 > /root/.ssh/ac_key
     rm -f /root/ingot-keys
     chmod 0600 /root/.ssh/iron*_key
     cd autossh
@@ -1376,18 +1398,22 @@ ep_connect() {
 #!/bin/bash
 autossh -M 0 -f -o "StrictHostKeyChecking no" -N -i /root/.ssh/ironjump_key -R $(cat /etc/hostname |cut -d '-' -f 2):localhost:22 $(cat /etc/hostname)@$IRONJUMP_SERVER
 EOF
-    if [[ -f /bin/ironjump-sync-.sh ]]; then rm -f /bin/ironjump-sync.sh; fi
+    if [[ -f /bin/ironjump-sync.sh ]]; then rm -f /bin/ironjump-sync.sh; fi
     cat <<EOF > /bin/ironjump-sync.sh
 #!/bin/bash
-ac_host=\$(cat /etc/hostname) ssh -i /root/.ssh/ironsync_key -o "StrictHostKeyChecking no" -o "SendEnv ac_host" ironsync@$IRONJUMP_SERVER > /root/.ssh/access_control
-sleep 5
-echo -e "\r\nLast Update: \$(date)" >> /root/.ssh/access_control
-
 #Process access control file after synchronization
 ACCESS_FILE="/root/.ssh/access_control"
 SUDOERS_FILE="/etc/sudoers.d/ironjump_users"
 touch "\$SUDOERS_FILE"
 chmod 440 "\$SUDOERS_FILE"
+
+ironjump_sync() {
+    local ac_host
+    local ac_key
+    ac_host=\$(cat /etc/hostname) ac_key=\$(cat /root/.ssh/ac_key) ssh -i /root/.ssh/ironsync_key -o "StrictHostKeyChecking no" -o "SendEnv ac_host ac_key" ironsync@$IRONJUMP_SERVER > /root/.ssh/access_control
+    sleep 5
+    echo -e "\r\nLast Update: \$(date)" >> /root/.ssh/access_control
+}
 
 process_access_control(){
 local username
@@ -1439,12 +1465,13 @@ while IFS=":" read -r username ssh_key status priv expiration; do
 done < "\$ACCESS_FILE"
 }
 
+ironjump_sync
 process_access_control
 EOF
     chmod 0700 /bin/ironjump-*.sh
     chown root:root /bin/ironjump-*.sh
     sleep 3; echo "Requesting Access Control List" ; /bin/ironjump-sync.sh
-    (crontab -l 2>/dev/null; echo "@reboot sleep 120 && pgrep autossh > /dev/null || /bin/ironjump-connect.sh") | crontab -
+    (crontab -l 2>/dev/null; echo "@reboot sleep 90 && pgrep autossh > /dev/null || /bin/ironjump-connect.sh") | crontab -
     (crontab -l 2>/dev/null; echo "*/10 * * * * pgrep autossh > /dev/null || /bin/ironjump-connect.sh") | crontab -
     (crontab -l 2>/dev/null; echo "@reboot /bin/ironjump-sync.sh") | crontab -
     (crontab -l 2>/dev/null; echo "*/5 * * * * /bin/ironjump-sync.sh") | crontab -
