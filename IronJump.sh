@@ -178,6 +178,7 @@ root_server_config_deploy_mgmt_menu() {
     echo "1. View Configuration File"
     echo "2. Modify Configuration File (Opens VI Editor)"
     echo "3. Deploy an IronJump Root Server"
+    echo "4. Generate an Archive of Files and Logs"
     echo "H. Harden SSH Service (Standalone Utility)"
     nav_breaker_bar
     nav_foot_menu
@@ -195,6 +196,7 @@ root_server_config_deploy_mgmt_menu() {
                 main_menu
             fi
             ;;
+        4) ironjump_archive ; main_menu ;;
         H|h) harden_ssh_service ; main_menu ;;
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
@@ -281,7 +283,8 @@ endpoint_device_mgmt_menu() {
     echo -e "Menu Selection:\n"
     echo "1. Connect to IronJump Server (Only works on Linux & Mac)"
     echo "2. Force an unscheduled permissions sync"
-    echo "3. Harden SSH Service on this Endpoint (Standalone Utility)"
+    echo "3. Generate an Archive of Files and Logs"
+    echo "4. Harden SSH Service on this Endpoint (Standalone Utility)"
     echo -e "D. SMELT this endpoint (Full Destruction - Not Recoverable)\r\n"
     nav_breaker_bar
     nav_foot_menu
@@ -297,7 +300,8 @@ endpoint_device_mgmt_menu() {
             fi
             ;;
         2) ep_force_sync ;;
-        3) harden_ssh_service ; main_menu ;;
+        3) ironjump_archive ; main_menu ;;
+        4) harden_ssh_service ; main_menu ;;
         D|d) ep_smelt_dev ;;
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;

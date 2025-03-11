@@ -731,6 +731,90 @@ EOF
     read -p "Setup Complete. Press [ENTER] to continue."
 }
 
+## Generate an archive of files and logs
+ironjump_archive() {
+    local continue
+    local encrypt_choice
+    local archive_del_choice
+    local archive_dir="/ironjump_archive"
+    if [[ ! -d $archive_dir ]]; then mkdir $archive_dir; fi
+    local archive_name="$ironjump_archive.tar.gz"
+    local archive_name_encrypted="ironjump_archive.tar.gz.enc"
+    local folders=(
+        "/root"
+        "/home"
+        "/opt"
+        "/var/log"
+    )
+
+    clear
+    echo "IronJump SSH Management - Files and Logs Archive Wizard"
+    nav_top_bar
+    #Check for existing archive
+    if [[ -f $archive_dir/$archive_name ]] || [[ -f $archive_dir/$archive_name_encrypted ]]; then
+        nav_break_bar
+        echo -e "\nArchive already exists."
+        read -p "  --> Do you want to delete the previous archive? (yes/no): " archive_del_choice
+        archive_del_choice=$(echo $archive_del_choice |tr [[:upper:]] [[:lower:]])
+        case $archive_del_choice in
+            y|yes) rm -f $archive_dir/{$archive_name,$archive_name_encrypted} ; log_action "Deleted previous archive." ; echo -e "    --> Previous archive deleted." ;;
+            n|no) nav_breaker_bar ; read -p "Aborting process. Press [ENTER] to return to Main Menu" continue ; main_menu ;;
+            *) invalid_choice ; ironjump_archive ;;
+        esac
+    fi
+
+    echo -e "\nThe following directories will be archived: "
+    printf "    - %s\n" "${folders[@]}"
+    nav_breaker_bar
+    read -p "Press [ENTER] to continue or [CTRL+C] to quit." continue
+    echo -e "\n  --> Generating archive."
+    tar --recursive --same-owner -czf $archive_dir/$archive_name ${folders[@]}
+    if [[ $? -ne 0 ]]; then
+        log_action "Attempt to archive files and logs failed."
+        echo -e "Something went wrong creating archive. Aborting process."
+        nav_breaker_bar
+        read -p "Press [ENTER] to return to Main Menu" continue
+        main_menu
+    else
+        log_action "System archived to $archive_dir/$archive_name"
+        echo -e " --> Archive complete. Saved to: $archive_dir/$archive_name\n"
+    fi
+
+    #Prompt for encryption
+    read -p "Do you want to encrypt the archive? (yes/no): " encrypt_choice
+    encrypt_choice=$(echo $encrypt_choice |tr [[:upper:]] [[:lower:]])
+    case $encrypt_choice in
+        y|yes)
+            echo -e "  --> Encrypting archive."
+            openssl enc -aes-256-cbc -e -pbkdf2 -in "$archive_dir/$archive_name" -out "$archive_dir/$archive_name_encrypted"
+            if [[ $? -ne 0 ]]; then
+                log_action "Attempt to encrypt archive failed. Unencrypted archive created."
+                echo -e "  --> Something went wrong encrypting archive. Unable to complete process."
+                echo -e "  --> Unencrypted archive generated: $archive_dir/$archive_name"
+                nav_breaker_bar
+                read -p "Press [ENTER] to return to Main Menu." continue
+                main_menu
+            else
+                log_action "Encrypted archive generated: $archive_dir/$archive_name_encrypted."
+                rm -f $archive_dir/$archive_name
+                chomod 0400 $archive_dir/$archive_name_encrypted
+                echo -e "  --> Encryption complete. Saved to: $archive_dir/$archive_name_encrypted"
+            fi
+            ;;
+        n|no) echo -e "  --> File will not be encrypted.\n  --> Unencrypted archive generated: $archive_dir/$archive_name." ; $nav_breaker_bar ; read -p "Press [ENTER] to return to Main Menu." continue ; main_menu ;;
+        *) invalid choice ; echo -e "  --> File will not be encrypted.\n  --> Unencrypted archive generated: $archive_dir/$archive_name." ; $nav_breaker_bar ; read -p "Press [ENTER] to return to Main Menu." continue ; main_menu ;;
+    esac
+
+    #Provide instructions for unencrypting
+    nav_breaker_bar
+    echo -e "To decrypt the archive, run the following commands:"
+    echo -e "  --> openssl enc -aes-256-cbc -d -pbkdf2 -in $archive_dir/$archive_name_encrypted -out $archive_name"
+    echo -e "  --> tar -xzf $archive_name\n"
+    nav_breaker_bar
+    read -p "Press [ENTER] to return to Main Menu." continue
+    main_menu
+}
+
 ## Install Dependencies
 f_make_setup() {
     # Check if make utility is installed. Required for AutoSSH.
