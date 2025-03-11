@@ -18,6 +18,7 @@ SSH_CONF_IRONJUMP_BACKUP="/etc/ssh/sshd_config.d/zz-ironjump.conf.bak-$(date +%F
 SSH_CONF_SYSTEM="/etc/ssh/sshd_config"
 SSH_CONF_SYSTEM_BACKUP="/etc/ssh/sshd_config.bak"
 SSH_ENCRYPT_CONF="/etc/ssh/sshd_config.d/zz-ironjump-crypt.conf"
+IRONJUMP_ROLE_FILE="/opt/IronJump/ironjump.role"
 
 # Ensure the script is run as root
 if [[ $EUID -ne 0 ]]; then
@@ -184,7 +185,7 @@ root_server_config_deploy_mgmt_menu() {
         1) view_configuration ;;
         2) mod_configuration ;;
         3)
-            if [[ $(cat /opt/IronJump/IronJump.role |awk '{print $NF}') == "SERVER" ]]; then
+            if [[ -f $ironjump_role_file ]] && [[ $(cat $ironjump_role_file |awk '{print $NF}') == "SERVER" ]]; then
                 echo -e "Server is already configured."
                 nav_breaker_bar
                 read -p "Press [ENTER] to return to Main Menu." continue
@@ -286,8 +287,8 @@ endpoint_device_mgmt_menu() {
     nav_foot_menu
     case $choice in
         1)
-            if [[ $(cat /opt/IronJump/IronJump.role |awk '{print $NF}') == "ENDPOINT" ]]; then
-                echo -e "Endpoint is already configured. Remove IronJump.role file to re-register."
+            if [[ -f $ironjump_role_file ]] && [[ $(cat $ironjump_role_file |awk '{print $NF}') == "ENDPOINT" ]]; then
+                echo -e "Endpoint is already configured. Remove ironjump.role file to re-register."
                 nav_breaker_bar
                 read -p "Press [ENTER] to return to Main Menu." continue
                 main_menu
