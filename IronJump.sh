@@ -44,7 +44,25 @@ else
     exit 1
 fi
 
-#Create Symbolic Link for IronJump
+# Check for AutoSSH files in /opt/IronJump/autossh
+if [[ ! -f /opt/IronJump/autossh/configure ]]; then
+    clear
+    echo -e "[WARNING]\n---------"
+    echo -e "IronJump may not have been downloaded correctly."
+    echo -e "The AutoSSH folder is empty, which will is required"
+    echo -e "for proper operation. It is likely that IronJump"
+    echo -e "was incorrectly installed from Git. Please use the"
+    echo -e "following commands when downloading from Git:"
+    echo -e "\n\n  --> cd /opt/"
+    echo -e "  --> git clone --recurse-submodules https://github.com/IronJump/IronJump.git"
+    echo -e "  --> cd IronJump"
+    echo -e "  --> chmod +x IronJump.sh"
+    echo -e "\n\nIF you have installed AutoSSH already, this"
+    echo -e "message can be ignored.\n"
+    read -p "Press [ENTER] to continue." continue
+fi
+
+# Create Symbolic Link for IronJump
 clear
 if [[ ! -e /bin/ironjump ]]; then
     ln -s /opt/IronJump/IronJump.sh /bin/ironjump
@@ -74,27 +92,29 @@ nav_head_menu(){
 }
 
 nav_foot_menu() {
-    echo -e "S. SSH Monitor Live Connections"
-    echo -e "P. Previous Menu"
-    echo -e "R. Reboot Server"
-    echo -e "Q. Quit\r\n"
+    echo -e "  S. SSH Monitor Live Connections"
+    echo -e "  P. Previous Menu"
+    echo -e "  M. Main Menu"
+    echo -e "  R. Reboot Server"
+    echo -e "  Q. Quit\r\n"
     read -p "Enter your choice: " choice
 }
 
 # Main Menu
 main_menu() {
+    local choice
     nav_head_menu
     echo "Navigation:"
     echo -e "--> Main Menu\r\n"
     echo -e "Menu Selection:\n"
-    echo "1. Root Server Management"
-    echo "2. Endpoint Device Management"
-    echo "3. Access Control Management"
-    echo "4. Change Role Type"
+    echo "  1. Root Server Management"
+    echo "  2. Endpoint Device Management"
+    echo "  3. Access Control Management"
+    echo "  4. Change Role Type"
     nav_breaker_bar
-    echo "S. SSH Monitor Live Connections"
-    echo "R. Reboot Server"
-    echo -e "Q. Quit\r\n"
+    echo "  S. SSH Monitor Live Connections"
+    echo "  R. Reboot Server"
+    echo -e "  Q. Quit\r\n"
     read -p "Enter your choice: " choice
     case "$choice" in
         1)
@@ -144,15 +164,16 @@ main_menu() {
 
 #Root Server Management Menu
 root_server_mgmt_menu() {
+    local choice
     clear
     nav_head_menu
     echo "Navigation:"
     echo -e "--> Main Menu"
     echo -e "   --> Root Server Management\r\n"
     echo -e "Menu Selection:\n"
-    echo "1. Configuration & Deployment Management"
-    echo "2. User Account Management"
-    echo "3. Endpoint Device Account Management"
+    echo "  1. Configuration & Deployment Management"
+    echo "  2. User Account Management"
+    echo "  3. Endpoint Device Account Management"
     nav_breaker_bar
     nav_foot_menu
     case $choice in
@@ -162,12 +183,14 @@ root_server_mgmt_menu() {
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
         P|p) main_menu ;;
+        M|m) main_menu ;;
         Q|q) cd $OLDPWD ; exit 0 ;;
         *) invalid_choice; root_server_mgmt_menu ;;
     esac
 }
 
 root_server_config_deploy_mgmt_menu() {
+    local choice
     clear
     nav_head_menu
     echo "Navigation:"
@@ -175,11 +198,11 @@ root_server_config_deploy_mgmt_menu() {
     echo -e "   --> Root Server Management"
     echo -e "      --> Configuration & Deployment Menu\r\n"
     echo -e "Menu Selection:\n"
-    echo "1. View Configuration File"
-    echo "2. Modify Configuration File (Opens VI Editor)"
-    echo "3. Deploy an IronJump Root Server"
-    echo "4. Generate an Archive of Files and Logs"
-    echo "H. Harden SSH Service (Standalone Utility)"
+    echo "  1. View Configuration File"
+    echo "  2. Modify Configuration File (Opens VI Editor)"
+    echo "  3. Deploy an IronJump Root Server"
+    echo "  4. Generate an Archive of Files and Logs"
+    echo "  H. Harden SSH Service (Standalone Utility)"
     nav_breaker_bar
     nav_foot_menu
     case $choice in
@@ -201,12 +224,14 @@ root_server_config_deploy_mgmt_menu() {
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
         P|p) root_server_mgmt_menu ;;
+        M|m) main_menu ;;
         Q|q) cd $OLDPWD ; exit 0 ;;
         *) invalid_choice; root_server_config_deploy_mgmt_menu ;;
     esac
 }
 
 root_server_user_acct_mgmt_menu() {
+    local choice
     clear
     nav_head_menu
     echo "Navigation:"
@@ -214,13 +239,13 @@ root_server_user_acct_mgmt_menu() {
     echo -e "   --> Root Server Management"
     echo -e "      --> User Account Management Menu\r\n"
     echo -e "Menu Selection:\n"
-    echo "1. List Current IronJump User Accounts"
-    echo "2. Create New IronJump User Account"
-    echo "3. Enable IronJump User Account"
-    echo "4. Disable Existing IronJump User Account"
-    echo "5. Delete Existing IronJump User Account"
-    echo "6. Change a IronJump User's SSH Public Key"
-    echo "7. Set Expiration of a IronJump User's Account"
+    echo "  1. List Current IronJump User Accounts"
+    echo "  2. Create New IronJump User Account"
+    echo "  3. Enable IronJump User Account"
+    echo "  4. Disable Existing IronJump User Account"
+    echo "  5. Delete Existing IronJump User Account"
+    echo "  6. Change a IronJump User's SSH Public Key"
+    echo "  7. Set Expiration of a IronJump User's Account"
     nav_breaker_bar
     nav_foot_menu
     case $choice in
@@ -234,12 +259,14 @@ root_server_user_acct_mgmt_menu() {
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
         P|p) root_server_mgmt_menu ;;
+        M|m) main_menu ;;
         Q|q) cd $OLDPWD ; exit 0 ;;
         *) invalid_choice ; root_server_user_acct_mgmt_menu ;;
     esac
 }
 
 root_server_endpoint_acct_mgmt_menu() {
+    local choice
     clear
     nav_head_menu
     echo "Navigation:"
@@ -247,13 +274,13 @@ root_server_endpoint_acct_mgmt_menu() {
     echo -e "   --> Root Server Management"
     echo -e "      --> Endpoint Device Account Management Menu\r\n"
     echo -e "Menu Selection:\n"
-    echo "1. List Current Endpoint Device Accounts"
-    echo "2. Create New Endpoint Device Account"
-    echo "3. Enable New Endpoint Device Account"
-    echo "4. Disable Existing Endpoint Device Account"
-    echo "5. Delete Existing Endpoint Device Account"
-    echo "6. Change an Endpoint Device's SSH Public Key"
-    echo "7. Set Expiration of an Endpoint Device's Account"
+    echo "  1. List Current Endpoint Device Accounts"
+    echo "  2. Create New Endpoint Device Account"
+    echo "  3. Enable New Endpoint Device Account"
+    echo "  4. Disable Existing Endpoint Device Account"
+    echo "  5. Delete Existing Endpoint Device Account"
+    echo "  6. Change an Endpoint Device's SSH Public Key"
+    echo "  7. Set Expiration of an Endpoint Device's Account"
     nav_breaker_bar
     nav_foot_menu
     case $choice in
@@ -267,6 +294,7 @@ root_server_endpoint_acct_mgmt_menu() {
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
         P|p) root_server_mgmt_menu ;;
+        M|m) main_menu ;;
         Q|q) cd $OLDPWD ; exit 0 ;;
         *) invalid_choice ; root_server_endpoint_acct_mgmt_menu ;;
     esac
@@ -275,17 +303,18 @@ root_server_endpoint_acct_mgmt_menu() {
 
 #Endpoint Device Management Menu
 endpoint_device_mgmt_menu() {
+    local choice
     clear
     nav_head_menu
     echo "Navigation:"
     echo -e "--> Main Menu"
     echo -e "   --> Endpoint Device Management Menu\r\n"
     echo -e "Menu Selection:\n"
-    echo "1. Connect to IronJump Server (Only works on Linux & Mac)"
-    echo "2. Force an unscheduled permissions sync"
-    echo "3. Generate an Archive of Files and Logs"
-    echo "4. Harden SSH Service on this Endpoint (Standalone Utility)"
-    echo -e "D. SMELT this endpoint (Full Destruction - Not Recoverable)\r\n"
+    echo "  1. Connect to IronJump Server (Only works on Linux & Mac)"
+    echo "  2. Force an unscheduled permissions sync"
+    echo "  3. Generate an Archive of Files and Logs"
+    echo "  4. Harden SSH Service on this Endpoint (Standalone Utility)"
+    echo -e "  D. SMELT this endpoint (Full Destruction - Not Recoverable)\r\n"
     nav_breaker_bar
     nav_foot_menu
     case $choice in
@@ -306,6 +335,7 @@ endpoint_device_mgmt_menu() {
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
         P|p) main_menu ;;
+        M|m) main_menu ;;
         Q|q) cd $OLDPWD ; exit 0 ;;
         *) invalid_choice ; endpoint_device_mgmt_menu ;;
     esac
@@ -313,17 +343,18 @@ endpoint_device_mgmt_menu() {
 
 #Access Control Management Menu
 access_control_mgmt_menu() {
+    local choice
     clear
     nav_head_menu
     echo -e "Navigation:"
     echo -e "-->Main Menu"
     echo -e "   -->Access Control Management Menu\r\n"
     echo -e "Menu Selection:\n"
-    echo "1. List All Current Assignments"
-    echo "2. Allow or Modify User Assignments"
-    echo "3. Revoke User Assignments"
-    echo "4. Allow/Revoke a User to All Endpoints (Mass Assignment)"
-    echo "5. Revoke 'ALL' Assignments"
+    echo "  1. List All Current Assignments"
+    echo "  2. Allow or Modify User Assignments"
+    echo "  3. Revoke User Assignments"
+    echo "  4. Allow/Revoke a User to All Endpoints (Mass Assignment)"
+    echo "  5. Revoke 'ALL' Assignments"
     nav_breaker_bar
     nav_foot_menu
     case $choice in
@@ -331,16 +362,18 @@ access_control_mgmt_menu() {
         2) access_control_assign_user_menu ;;
         3) access_control_revoke_user_menu ;;
         4) access_control_mass_assignments ;;
-        5) access_controll_revoke_all_assignments ;;
+        5) access_control_revoke_all_assignments ;;
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
         P|p) main_menu ;;
+        M|m) main_menu ;;
         Q|q) cd $OLDPWD ; exit 0 ;;
         *) invalid_choice ; access_control_mgmt_menu ;;
     esac
 }
 
 access_control_assign_user_menu() {
+    local choice
     clear
     echo -e "IronJump - Access Control Management - Allow/Modify"
     nav_top_bar
@@ -349,8 +382,8 @@ access_control_assign_user_menu() {
     echo -e "   -->Access Control Management Menu"
     echo -e "      --> Allow/Modify an Account\r\n"
     echo -e "Menu Selection:\n"
-    echo "1. Individual Assignments by User"
-    echo "2. Individual Assignments by Endpoint"
+    echo "  1. Individual Assignments by User"
+    echo "  2. Individual Assignments by Endpoint"
     nav_breaker_bar
     nav_foot_menu
     case $choice in
@@ -359,12 +392,14 @@ access_control_assign_user_menu() {
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
         P|p) access_control_mgmt_menu ;;
+        M|m) main_menu ;;
         Q|q) cd $OLDPWD ; exit 0 ;;
         *) invalid_choice ; access_control_assign_user_menu ;;
     esac
 }
 
 access_control_revoke_user_menu() {
+    local choice
     clear
     echo -e "IronJump - Access Control Management - Allow/Modify"
     nav_top_bar
@@ -373,8 +408,8 @@ access_control_revoke_user_menu() {
     echo -e "   -->Access Control Management Menu"
     echo -e "      --> Revoke an Account\r\n"
     echo -e "Menu Selection:\n"
-    echo "1. Revoke Individual Assignments by User"
-    echo "2. Revoke Individual Assignments by Endpoint"
+    echo "  1. Revoke Individual Assignments by User"
+    echo "  2. Revoke Individual Assignments by Endpoint"
     nav_breaker_bar
     nav_foot_menu
     case $choice in
@@ -383,6 +418,7 @@ access_control_revoke_user_menu() {
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
         P|p) access_control_mgmt_menu ;;
+        M|m) main_menu ;;
         Q|q) cd $OLDPWD ; exit 0 ;;
         *) invalid_choice ; access_control_revoke_user_menu ;;
     esac
