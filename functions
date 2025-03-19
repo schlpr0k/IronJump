@@ -1318,8 +1318,8 @@ EOF
     clear
     echo "IronJump - New Endpoint Account (Credentials)"
     nav_top_bar
-    echo -e "  --> Username: "$ep_account_name
-    echo -e "  --> Password: "$token
+    echo -e "  --> Endpoint account name: "$ep_account_name
+    echo -e "  --> One-time Password: "$token
     echo -e "\n\n!!!Write this down!!!\n---------------------\n  --> These are single use credentials for endpoint registration.\n  --> Advancing to the next screen will remove the credentials\n      from view and they will not be shown again."
     nav_breaker_bar
     unset token
@@ -1528,9 +1528,9 @@ ep_connect() {
     nav_breaker_bar
     read -p "Press [ENTER] to continue" continue
     echo  -e "\r\n  --> Collect Information for Registration\n"
-    read -p "    --> What is the IronJump Server IP: " ironjump_srv_ip
-    read -p "    --> What is this endpoint's name: " ironjump_ep_name
-    read -p "    --> Where you provided an SSH access password? (yes/no): " has_token
+    read -p "    --> IronJump Server IP address: " ironjump_srv_ip
+    read -p "    --> Endpoint account name (Format: ingot-5XXXX): " ironjump_ep_name
+    read -p "    --> Were you provided a one-time SSH access password? (yes/no): " has_token
     case $has_token in
         No|no|N|n) read -p "  --> [WARNING] You cannot proceed without a password." ; log_action "Endpoint registration incomplete. No one-time password" ; ep_mgmt_menu ;;
         Yes|yes|Y|y) sleep 1 ;;
