@@ -1756,7 +1756,7 @@ ep_smelt_device() {
 }
 
 access_control_list_assignments() {
-    local useranem
+    local username
     local password
     local uid
     local gid
