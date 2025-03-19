@@ -1570,7 +1570,7 @@ ep_connect() {
     source /etc/environment
     clear
     if [[ ! -d /root/.ssh ]]; then mkdir /root/.ssh; chmod 0700 /root/.ssh; fi
-    ssh $IRONJUMP_EP_NAME@$IRONJUMP_SERVER > /root/ingot-keys
+    ssh -o "StrictHostKeyChecking no" -T $IRONJUMP_EP_NAME@$IRONJUMP_SERVER > /root/ingot-keys
     echo " --> Migrating Keys"; sleep 5
     if [[ ! -f /root/ingot-keys ]]; then
         log_action "Endpoint registration incomplete. Ingot keys file missing."
@@ -1628,7 +1628,7 @@ log_action() {
 ironjump_sync() {
     local ac_host
     local ac_key
-    ac_host=\$(cat /etc/hostname) ac_key=\$(cat /root/.ssh/ac_key) ssh -i /root/.ssh/ironsync_key -o "StrictHostKeyChecking no" -o "SendEnv ac_host ac_key" ironsync@$IRONJUMP_SERVER > /root/.ssh/access_control
+    ac_host=\$(cat /etc/hostname) ac_key=\$(cat /root/.ssh/ac_key) ssh -i /root/.ssh/ironsync_key -T -o "StrictHostKeyChecking no" -o "SendEnv ac_host ac_key" ironsync@$IRONJUMP_SERVER > /root/.ssh/access_control
     sleep 5
     echo -e "\r\nLast Update: \$(date)" >> /root/.ssh/access_control
 }
