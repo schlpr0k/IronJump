@@ -333,7 +333,7 @@ f_ssh_hard_regen_hostkeys_3() {
     f_ssh_hard_regen_hostkeys_1
     mkdir -p /etc/systemd/system/sshd-keygen.service.d
     echo "[Unit]" > $ssh_audit_conf
-    echo "ConditionFileNotEmpty=" >> $ssh_audit_cong
+    echo "ConditionFileNotEmpty=" >> $ssh_audit_conf
     echo "ConditionFileNotEmpty=!/etc/ssh/ssh_host_ed25519_key" >>$ssh_audit_conf
     systemctl daemon-reload
     f_ssh_hard_regen_hostkeys_2
