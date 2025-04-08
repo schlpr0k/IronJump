@@ -622,7 +622,6 @@ Match Group $IRONJUMP_SSH_GROUP
     PermitTunnel yes
     AuthenticationMethods publickey
     PasswordAuthentication no
-    Subsystem sftp none
 #END MATCH GROUP
 EOF
     sed -i "/^Match Group $IRONJUMP_SRV_GROUP/,/\#END MATCH GROUP/d" $SSH_CONF_IRONJUMP
@@ -636,7 +635,6 @@ Match Group $IRONJUMP_SRV_GROUP
     PermitTunnel yes
     AuthenticationMethods publickey
     PasswordAuthentication no
-    Subsystem sftp none
 #END MATCH GROUP
 EOF
     sed -i "/^Match Group $IRONJUMP_END_GROUP/,/\#END MATCH GROUP/d" $SSH_CONF_IRONJUMP
@@ -650,7 +648,6 @@ Match Group $IRONJUMP_END_GROUP
     PermitTunnel yes
     AuthenticationMethods publickey
     PasswordAuthentication no
-    Subsystem sftp none
 #END MATCH GROUP
 EOF
     sed -i "/^Match Group ingot_registry/,/\#END MATCH GROUP/d" $SSH_CONF_IRONJUMP
@@ -662,7 +659,6 @@ Match Group ingot_registry
     GatewayPorts no
     PermitTunnel no
     PasswordAuthentication yes
-    Subsystem sftp none
 #END MATCH GROUP
 EOF
     sed -i "/^Match User ironsync/,/\#END MATCH USER/d" $SSH_CONF_IRONJUMP
@@ -676,7 +672,6 @@ Match User ironsync
     PermitTunnel no
     AuthenticationMethods publickey
     PasswordAuthentication no
-    Subsystem sftp none
 #END MATCH USER
 EOF
     f_sshd_restart
