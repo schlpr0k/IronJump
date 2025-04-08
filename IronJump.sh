@@ -1,8 +1,9 @@
 #!/bin/bash
 # IronJump.sh - Unified Bastion Server & Endpoint Management Script
 # Authors: Andrew Bindner & Carlota Bindner
+# Special thanks and shout out to hdub-tech (github.com/hdub-tech) for so much support!
 # Purpose: Configure, deploy, and manage IronJump Bastion Server and Endpoints
-# Version: 0.1-Beta
+# Version: 1.0
 # License: Private
 
 # Global Variables - DO NOT CHANGE THESE! IRONJUMP WILL BREAK!
