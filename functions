@@ -207,7 +207,7 @@ list_endpoints(){
 ## SSH Hardening
 f_sshd_restart(){
     #Restart SSH Daemon
-    echo "  --> Restarting SSH Daemon"
+    echo "  --> Restarting SSH Daemon."
     case "$PKG_MANAGER" in
         "apt"|"dnf"|"yum"|"pacman")
             systemctl restart ssh 2>/dev/null || systemctl restart sshd
@@ -275,7 +275,7 @@ f_ssh_hard_check() {
         read -p "Enter your choice: " choice
         case "$choice" in
             Yes|yes|Y|y) echo -e "\n\n\t--> Making backup..." ; cp $SSH_CONF_SYSTEM $SSH_CONF_SYSTEM_BACKUP ; log_action "Made backup of sshd_config file during hardening." ;;
-            No|no|N|n) echo -e "\n\n\t--> Skipping backup..." ; log_action "Skipped backup of sshd_sonfig file during hardening." ;;
+            No|no|N|n) echo -e "\n\n\t--> Skipping backup..." ; log_action "Skipped backup of sshd_config file during hardening." ;;
             *) invalid_choice ; sleep 1 ; f_ssh_hard_check ;;
         esac
     else
@@ -333,7 +333,7 @@ f_ssh_hard_regen_hostkeys_3() {
     f_ssh_hard_regen_hostkeys_1
     mkdir -p /etc/systemd/system/sshd-keygen.service.d
     echo "[Unit]" > $ssh_audit_conf
-    echo "ConditionFileNotEmpty=" >> $ssh_audit_cong
+    echo "ConditionFileNotEmpty=" >> $ssh_audit_conf
     echo "ConditionFileNotEmpty=!/etc/ssh/ssh_host_ed25519_key" >>$ssh_audit_conf
     systemctl daemon-reload
     f_ssh_hard_regen_hostkeys_2
@@ -385,7 +385,7 @@ f_ssh_set_configuration() {
     echo -e "\n\n[WARNING] By default password authentication is set to \"YES\" to avoid lockout."
     echo -e "This is **-NOT-** recommended. You can change it to \"NO\" during setup. However,"
     echo -e "if you are not setup with SSH Public Keys for remote access, you will lock yourself"
-    echo -e "out from SSH access!\n\n\t--> Choose \"YES\" to allow password authenticaiton, -OR-\n\t--> Choose \"NO\" to disable password authentication"
+    echo -e "out from SSH access!\n\n\t--> Choose \"YES\" to allow password authentication, -OR-\n\t--> Choose \"NO\" to disable password authentication"
     nav_breaker_bar
     while true; do
         read -p "  --> Do you want to ALLOW password authentication for SSH services? (yes/no) " choice
@@ -586,7 +586,7 @@ f_setup_ironjump() {
     chmod -R 755 /home/ironjump
     log_action "Created IronJump home directories."
 
-    echo "  --> Creating IronSync Account"
+    echo "  --> Creating IronSync Account."
     useradd -U -m -d $IRONJUMP_CHROOT_ENV/servers/chroot/ironsync ironsync; sleep 1
     mkdir $IRONJUMP_CHROOT_ENV/servers/chroot/ironsync/.ssh
     touch $IRONJUMP_CHROOT_ENV/servers/chroot/ironsync/.ssh/authorized_keys
@@ -807,7 +807,7 @@ ironjump_archive() {
         *) invalid choice ; echo -e "  --> File will not be encrypted.\n  --> Unencrypted archive generated: $archive_dir/$archive_name." ; $nav_breaker_bar ; read -p "Press [ENTER] to return to Main Menu." continue ; main_menu ;;
     esac
 
-    #Provide instructions for unencrypting
+    #Provide instructions for decrypting
     nav_breaker_bar
     echo -e "  To decrypt the archive, run the following commands:"
     echo -e "    --> openssl enc -aes-256-cbc -d -pbkdf2 -in $archive_dir/$archive_name_encrypted -out $archive_name"
@@ -1001,7 +1001,7 @@ usr_mgmt_new() {
 local_account_check(){
     local continue
     local account_check
-    # Function requires 3 inputes when called 1) {users or endpoints} and 2) {username} and 3) menu location if error
+    # Function requires 3 inputs when called 1) {users or endpoints} and 2) {username} and 3) menu location if error
     if [[ -z $(passwd -S $2 2>/dev/null) ]]; then
         echo -e "  --> Account not found."
         account_check="failed"
@@ -1318,8 +1318,8 @@ EOF
     clear
     echo "IronJump - New Endpoint Account (Credentials)"
     nav_top_bar
-    echo -e "  --> Username: "$ep_account_name
-    echo -e "  --> Password: "$token
+    echo -e "  --> Endpoint account name: "$ep_account_name
+    echo -e "  --> One-time Password: "$token
     echo -e "\n\n!!!Write this down!!!\n---------------------\n  --> These are single use credentials for endpoint registration.\n  --> Advancing to the next screen will remove the credentials\n      from view and they will not be shown again."
     nav_breaker_bar
     unset token
@@ -1336,12 +1336,12 @@ dev_mgmt_enable() {
     nav_top_bar
     list_endpoints disabled
     nav_breaker_bar
-    read -p "  --> Enter an endoint account to enable: " dev_set_enable_name
+    read -p "  --> Enter an endpoint account to enable: " dev_set_enable_name
     local_account_check endpoints $dev_set_enable_name r_endpoints_menu
     if [[ $(list_endpoints enabled |grep "$dev_set_enable_name" |awk '{print $1}') == "(Enabled)" ]]; then
         echo -e "$dev_set_enable_name is already enabled."
         nav_breaker_bar
-        read -p "Press [ENTER] to return to the Endpoitn Account Management Menu." continue
+        read -p "Press [ENTER] to return to the Endpoint Account Management Menu." continue
         root_server_user_acct_mgmt_menu;
     fi
     read -p "  --> Are you sure you want to enable $dev_set_enable_name? Type [CONFIRM]: " choice
@@ -1454,7 +1454,7 @@ dev_mgmt_mod_pubkey() {
         echo $ssh_key > /home/ironjump/endpoints/chroot/$dev_set_update_pubkey_name/.ssh/authorized_keys
         chown $dev_set_update_pubkey_name:$dev_set_update_pubkey_name /home/ironjump/endpoints/chroot/$dev_set_update_pubkey_name/.ssh/authorized_keys
         chmod 0600 /home/ironjump/endpoints/chroot/$dev_set_update_pubkey_name/.ssh/authorized_keys
-        echo -e "\n    --> ser $usr_set_enable_name's public key has been modified!"
+        echo -e "\n    --> User $usr_set_enable_name's public key has been modified!"
         echo -e "\n\n  --> WARNING: THIS DID NOT UPDATE THE PRIVATE KEY ON THE ENDPOINT.\n\n"
         log_action "Endpoint account $dev_set_update_pubkey_name successfully updated."
         nav_breaker_bar
@@ -1528,11 +1528,11 @@ ep_connect() {
     nav_breaker_bar
     read -p "Press [ENTER] to continue" continue
     echo  -e "\r\n  --> Collect Information for Registration\n"
-    read -p "    --> What is the IronJump Server IP: " ironjump_srv_ip
-    read -p "    --> What is this endpoint's name: " ironjump_ep_name
-    read -p "    --> Where you provided an SSH access password? (yes/no): " has_token
+    read -p "    --> IronJump Server IP address: " ironjump_srv_ip
+    read -p "    --> Endpoint account name (Format: ingot-5XXXX): " ironjump_ep_name
+    read -p "    --> Were you provided a one-time SSH access password? (yes/no): " has_token
     case $has_token in
-        No|no|N|n) read -p "  --> [WARNING] You cannot proceed without a prassword." ; log_action "Endpoint registration imcomplete. No one-time password" ; ep_mgmt_menu ;;
+        No|no|N|n) read -p "  --> [WARNING] You cannot proceed without a password." ; log_action "Endpoint registration incomplete. No one-time password" ; ep_mgmt_menu ;;
         Yes|yes|Y|y) sleep 1 ;;
         *) invalid_choice ; ep_mgmt_menu ;;
     esac
@@ -1570,7 +1570,7 @@ ep_connect() {
     source /etc/environment
     clear
     if [[ ! -d /root/.ssh ]]; then mkdir /root/.ssh; chmod 0700 /root/.ssh; fi
-    ssh $IRONJUMP_EP_NAME@$IRONJUMP_SERVER > /root/ingot-keys
+    ssh -o "StrictHostKeyChecking no" -T $IRONJUMP_EP_NAME@$IRONJUMP_SERVER > /root/ingot-keys
     echo " --> Migrating Keys"; sleep 5
     if [[ ! -f /root/ingot-keys ]]; then
         log_action "Endpoint registration incomplete. Ingot keys file missing."
@@ -1628,7 +1628,7 @@ log_action() {
 ironjump_sync() {
     local ac_host
     local ac_key
-    ac_host=\$(cat /etc/hostname) ac_key=\$(cat /root/.ssh/ac_key) ssh -i /root/.ssh/ironsync_key -o "StrictHostKeyChecking no" -o "SendEnv ac_host ac_key" ironsync@$IRONJUMP_SERVER > /root/.ssh/access_control
+    ac_host=\$(cat /etc/hostname) ac_key=\$(cat /root/.ssh/ac_key) ssh -i /root/.ssh/ironsync_key -T -o "StrictHostKeyChecking no" -o "SendEnv ac_host ac_key" ironsync@$IRONJUMP_SERVER > /root/.ssh/access_control
     sleep 5
     echo -e "\r\nLast Update: \$(date)" >> /root/.ssh/access_control
 }
@@ -1756,7 +1756,7 @@ ep_smelt_device() {
 }
 
 access_control_list_assignments() {
-    local useranem
+    local username
     local password
     local uid
     local gid
@@ -2047,7 +2047,7 @@ assignments_revoke_by_user() {
                     find /home/ironjump/endpoints/chroot/ -type f -name "access_control" -exec sed -i "/^$assign_user:/s/:Allowed:.*$/:Revoked:U:$(date +%Y-%m-%d)/" {} +
                     log_action "Access Control - User account $assign_user revoked on from all endpoints."
                     nav_breaker_bar
-                    read -p "    --> Revocation complete. Press [ENTER] to retun to Access Control Menu." continue
+                    read -p "    --> Revocation complete. Press [ENTER] to return to Access Control Menu." continue
                     access_control_mgmt_menu
                     ;;
                 A|a)
@@ -2359,7 +2359,7 @@ validate_date() {
     local days_in_month
     local input_date
     local today_day
-    # NOTE: Requires two inputs when called "{user or endpoint or assignment}" and "date in formate YYYY-MM-YY" for confirmation and navigation upon error.
+    # NOTE: Requires two inputs when called "{user or endpoint or assignment}" and "date in format YYYY-MM-DD" for confirmation and navigation upon error.
     read_input_date=$2
     if ! [[ "$read_input_date" =~ ^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$ ]]; then
         nav_breaker_bar
