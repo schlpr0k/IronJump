@@ -1500,7 +1500,6 @@ f_check_internet_connectivity() {
     fi
 }
 
-#from ep_mgmt_menu
 ep_connect() {
     local roletype
     local ironjump_srv_ip
@@ -1733,7 +1732,6 @@ EOF
     nav_breaker_bar
     read -p "This endpoint will now reboot. Press [ENTER] to continue." continue
     shutdown -r now
-    ep_mgmt_menu
 }
 
 ep_force_sync(){
