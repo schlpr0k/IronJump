@@ -1756,7 +1756,10 @@ ep_smelt_device() {
     echo "--> WARNING: This will permanently destroy the system and wipe all data!"
     echo "--> This action is irreversible and will render the system unusable!"
     echo "--> This is NOT a LOW-LEVEL disk wipe and should not be used for compliance tasks."
-    echo -e "\nDOUBLE CHECK AFTER PROCESS COMPLETE. NOT ALL SYSTEMS ARE THE SAME.\nTRUST, BUT VERIFY!"
+    echo -e "\nDOUBLE CHECK AFTER PROCESS COMPLETE. NOT ALL SYSTEMS ARE THE SAME.\nTRUST, BUT VERIFY!\n"
+    nav_breaker_bar
+    echo "!!! --> DOES NOT WORK FOR VIRTUAL MACHINES w/ SNAPSHOTS ENABLED <-- !!!"
+    nav_breaker_bar
 
     #Confirmation prompt
     read -p "Type 'DESTROY' to confirm: " confirmation
