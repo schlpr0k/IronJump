@@ -230,17 +230,12 @@ f_ssh_hard_os_selection() {
     echo "4. Ubuntu 20.04"
     echo "5. Ubuntu 18.04"
     echo "6. Ubuntu 16.04"
-    #echo "7. Ubuntu 14.04"
-    #echo "8. Ubuntu Core 18"
-    #echo "9. Ubuntu Core 16"
-    echo "7 10. Debian Bookworm (Debian 12), Raspberry Pi OS"
-    echo "8 11. Debian Bullseye (Debian 11)"
-    echo "9 12. Debian Buster (Debian 10)"
-    echo "10 13. Rocky Linux 9"
-    echo "11 14. RHEL 8 Server / CentOS 8 Server"
-    echo "12 15. RHEL 7 Server / CentOS 7 Server"
-    #echo "16. pfSense 2.4"
-    #echo "17. OpenBSD 6.2 Server"
+    echo "7. Debian Bookworm (Debian 12), Raspberry Pi OS"
+    echo "8. Debian Bullseye (Debian 11)"
+    echo "9. Debian Buster (Debian 10)"
+    echo "10. Rocky Linux 9"
+    echo "11. RHEL 8 Server / CentOS 8 Server"
+    echo "12. RHEL 7 Server / CentOS 7 Server"
     nav_breaker_bar
     read -p "Enter your choice: " choice
     case $choice in
@@ -541,6 +536,9 @@ f_setup_ironjump() {
     f_diceware_setup
     log_action "Installed Diceware utility."
 
+    f_lsof_setup
+    log_action "Installed lsof utility."
+
     harden_ssh_service
     log_action "Hardened SSH services."
 
@@ -704,7 +702,6 @@ ironjump_archive() {
     local folders=(
         "/root"
         "/home"
-        "/opt"
         "/var/log"
     )
 
@@ -826,6 +823,18 @@ f_diceware_setup(){
         "pacman") pacman -Syu --noconfirm python-diceware ;;
         "pkg_add") pkg_add diceware ;;
         *) echo "  --> Package manager not recognized. Cannot install Diceware."; return 1 ;;
+    esac
+}
+
+f_lsof_setup(){
+    # Check if lsof is installed
+    case "$PKG_MANAGER" in
+        "apt") apt install -y lsof ;;
+        "yum") yum install -y lsof ;;
+        "dnf") dnf install -y lsof ;;
+        "pacman") pacman -Syu --noconfirm lsof ;;
+        "pkg_add") pkg_add lsof ;;
+        *) echo "  --> Package manager not recognized. Cannot install lsof."; return 1 ;;
     esac
 }
 
@@ -1533,6 +1542,8 @@ ep_connect() {
     log_action "Installed SSH server and client."
     f_make_setup
     log_action "Installed make utility."
+    f_lsof_setup
+    log_action "Installed lsof utility."
 
     clear
     echo "IronJump SSH Management : Endpoint Registration Wizard"
@@ -2315,10 +2326,10 @@ ssh_monitor() {
         done
 
         # Add a separator for readability
-        echo "--------------------------------------------"
+        echo -e "\n\n--------------------------------------------"
         echo "RAW VIEW"
         echo "--------------------------------------------"
-        lsof -i -n -P |grep ssh |grep -v "root\|7u \|8u "
+        lsof -i -n -P |grep ssh
         echo "--------------------------------------------"
         echo "[Press Ctrl+C to Return to Main Menu]"
         # Sleep for 3 seconds before refreshing
