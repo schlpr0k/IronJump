@@ -332,7 +332,7 @@ endpoint_device_mgmt_menu() {
         2) ep_force_sync ;;
         3) ironjump_archive ; main_menu ;;
         4) harden_ssh_service ; main_menu ;;
-        D|d) ep_smelt_dev ;;
+        D|d) ep_smelt_device ;;
         S|s) ssh_monitor ;;
         R|r) ast_reboot ;;
         P|p) main_menu ;;

@@ -230,17 +230,17 @@ f_ssh_hard_os_selection() {
     echo "4. Ubuntu 20.04"
     echo "5. Ubuntu 18.04"
     echo "6. Ubuntu 16.04"
-    echo "7. Ubuntu 14.04"
-    echo "8. Ubuntu Core 18"
-    echo "9. Ubuntu Core 16"
-    echo "10. Debian Bookworm (Debian 12), Raspberry Pi OS"
-    echo "11. Debian Bullseye (Debian 11)"
-    echo "12. Debian Buster (Debian 10)"
-    echo "13. Rocky Linux 9"
-    echo "14. RHEL 8 Server / CentOS 8 Server"
-    echo "15. RHEL 7 Server / CentOS 7 Server"
-    echo "16. pfSense 2.4"
-    echo "17. OpenBSD 6.2 Server"
+    #echo "7. Ubuntu 14.04"
+    #echo "8. Ubuntu Core 18"
+    #echo "9. Ubuntu Core 16"
+    echo "7 10. Debian Bookworm (Debian 12), Raspberry Pi OS"
+    echo "8 11. Debian Bullseye (Debian 11)"
+    echo "9 12. Debian Buster (Debian 10)"
+    echo "10 13. Rocky Linux 9"
+    echo "11 14. RHEL 8 Server / CentOS 8 Server"
+    echo "12 15. RHEL 7 Server / CentOS 7 Server"
+    #echo "16. pfSense 2.4"
+    #echo "17. OpenBSD 6.2 Server"
     nav_breaker_bar
     read -p "Enter your choice: " choice
     case $choice in
@@ -254,13 +254,8 @@ f_ssh_hard_os_selection() {
         8) f_ssh_hard_regen_hostkeys_1 ; f_ssh_hard_s8 ;;
         9) f_ssh_hard_regen_hostkeys_1 ; f_ssh_hard_s9 ;;
         10) f_ssh_hard_regen_hostkeys_1 ; f_ssh_hard_s10 ;;
-        11) f_ssh_hard_regen_hostkeys_1 ; f_ssh_hard_s11 ;;
-        12) f_ssh_hard_regen_hostkeys_1 ; f_ssh_hard_s12 ;;
-        13) f_ssh_hard_regen_hostkeys_1 ; f_ssh_hard_s13 ;;
-        14) f_ssh_hard_regen_hostkeys_2 ; f_ssh_hard_s14 ;;
-        15) f_ssh_hard_regen_hostkeys_3 ; f_ssh_hard_s15 ;;
-        16) f_ssh_hard_regen_hostkeys_1 ; f_ssh_hard_s16 ;;
-        17) f_ssh_hard_regen_hostkeys_1 ; f_ssh_hard_s17 ;;
+        11) f_ssh_hard_regen_hostkeys_2 ; f_ssh_hard_s11 ;;
+        12) f_ssh_hard_regen_hostkeys_3 ; f_ssh_hard_s12 ;;
         *) invalid_choice ; f_ssh_hard_os_selection ;;
     esac
 }
@@ -482,56 +477,34 @@ f_ssh_hard_s6() {
 }
 
 f_ssh_hard_s7() {
-    #Specific hardening commands for Ubuntu 14.04
-    echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com" > $SSH_ENCRYPT_CONF
-    f_ssh_set_configuration
-    service ssh restart
-}
-
-f_ssh_hard_s8() {
-    #Specific hardening commands for Ubuntu Core 18
-    echo -e "\n# Only enable RSA and ED25519 host keys.\nHostKey /etc/ssh/ssh_host_rsa_key\nHostKey /etc/ssh/ssh_host_ed25519_key\n\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com" > $SSH_ENCRYPT_CONF
-    f_ssh_set_configuration
-    service ssh reload
-}
-
-f_ssh_hard_s9() {
-    #Specific hardening commands for Ubuntu Core 16
-    sed -i 's/^MACs \(.*\)$/\#MACs \1/g' $SSH_CONF_SYSTEM
-    echo -e "\n# Restrict MAC algorithms, as per sshaudit.com hardening guide.\nMACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com" > $SSH_ENCRYPT_CONF
-    f_ssh_set_configuration
-    service ssh reload
-}
-
-f_ssh_hard_s10() {
     #Specific hardening commands for Debian Bookworm (Debian 12)
     echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\n KexAlgorithms sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org,gss-curve25519-sha256-,diffie-hellman-group16-sha512,gss-group16-sha512-,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\n\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-gcm@openssh.com,aes128-ctr\n\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\n\nHostKeyAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nRequiredRSASize 3072\n\nCASignatureAlgorithms sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nGSSAPIKexAlgorithms gss-curve25519-sha256-,gss-group16-sha512-\n\nHostbasedAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-256\n\nPubkeyAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-256\n\n" > $SSH_ENCRYPT_CONF
     f_ssh_set_configuration
     service ssh restart
 }
 
-f_ssh_hard_s11() {
+f_ssh_hard_s8() {
     #Specific hardening commands for Debian Bullseye (Debian 11)
     echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\nHostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,sk-ssh-ed25519-cert-v01@openssh.com,rsa-sha2-256,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com" > $SSH_ENCRYPT_CONF
     f_ssh_set_configuration
     service ssh restart
 }
 
-f_ssh_hard_s12() {
+f_ssh_hard_s9() {
     #Specific hardening commands for Debian Buster (Debian 10)
     echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\nHostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-256,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com" > $SSH_ENCRYPT_CONF
     f_ssh_set_configuration
     service ssh restart
 }
 
-f_ssh_hard_s13() {
+f_ssh_hard_s10() {
     #Specific hardening commands for Rocky Linux 9
     echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org,gss-curve25519-sha256-,diffie-hellman-group16-sha512,gss-group16-sha512-,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\n\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-gcm@openssh.com,aes128-ctr\n\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com\n\nHostKeyAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nRequiredRSASize 3072\n\nCASignatureAlgorithms sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\nGSSAPIKexAlgorithms gss-curve25519-sha256-,gss-group16-sha512-\n\nHostbasedAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-256-cert-v01@openssh.com,rsa-sha2-256\n\nPubkeyAcceptedAlgorithms sk-ssh-ed25519-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,sk-ssh-ed25519@openssh.com,ssh-ed25519,rsa-sha2-512,rsa-sha2-256\n\n" > /etc/crypto-policies/back-ends/opensshserver.config
     f_ssh_set_configuration
     systemctl restart sshd
 }
 
-f_ssh_hard_s14() {
+f_ssh_hard_s11() {
     #Specific hardening commands for RHEL 8 Server / CentOS 8 Server
     cp /etc/crypto-policies/back-ends/opensshserver.config /etc/crypto-policies/back-ends/opensshserver.config.orig
     echo -e "CRYPTO_POLICY='-oCiphers=chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr -oMACs=hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com -oGSSAPIKexAlgorithms=gss-curve25519-sha256- -oKexAlgorithms=curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256 -oHostKeyAlgorithms=ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-256,rsa-sha2-512 -oPubkeyAcceptedKeyTypes=ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-256,rsa-sha2-512'" > /etc/crypto-policies/back-ends/opensshserver.config
@@ -539,26 +512,11 @@ f_ssh_hard_s14() {
     systemctl restart sshd.service
 }
 
-f_ssh_hard_s15() {
+f_ssh_hard_s12() {
     #Specific hardening commands for RHEL 7 Server / CentOS 7 Server
     echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group18-sha512,diffie-hellman-group16-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com" > $SSH_ENCRYPT_CONF
     f_ssh_set_configuration
     systemctl restart sshd.service
-}
-
-f_ssh_hard_s16() {
-    #Specific hardening commands for pfSense 2.4
-    sed -i.bak 's/^MACs \(.*\)$/\#MACs \1/g' $SSH_CONF_SYSTEM
-    echo "" | echo "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com" > $SSH_ENCRYPT_CONF
-    f_ssh_set_configuration
-    service sshd onerestart
-}
-
-f_ssh_hard_s17() {
-    #Specific hardening commands for OpenBSD 6.2 Server
-    echo -e "\n# Restrict key exchange, cipher, and MAC algorithms, as per sshaudit.com\n# hardening guide.\nKexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256\nCiphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr\nMACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com" > $SSH_ENCRYPT_CONF
-    f_ssh_set_configuration
-    kill -HUP `cat /var/run/sshd.pid`
 }
 
 ## Deploy IronJump Root Server
@@ -569,6 +527,12 @@ f_setup_ironjump() {
     touch /var/log/ironjump.log
     chown root:root /var/log/ironjump.log
     chmod 0600 /var/log/ironjump.log
+
+    #Check for internet connectivity
+    clear
+    f_check_internet_connectivity
+
+    clear
     log_action "Begin IronJump server deployment and setup."
 
     f_sshd_setup
@@ -733,10 +697,10 @@ ironjump_archive() {
     local continue
     local encrypt_choice
     local archive_del_choice
-    local archive_dir="/ironjump_archive"
+    local archive_dir="/opt/IronJump/ironjump_archive"
     if [[ ! -d $archive_dir ]]; then mkdir $archive_dir; fi
-    local archive_name="ironjump_archive.tar.gz"
-    local archive_name_encrypted="ironjump_archive.tar.gz.enc"
+    local archive_name="$(date '+%Y-%m-%d_%H-%M')_ironjump_archive.tar.gz"
+    local archive_name_encrypted="$(date '+%Y-%m-%d_%H-%M')_ironjump_archive.tar.gz.enc"
     local folders=(
         "/root"
         "/home"
@@ -829,7 +793,7 @@ f_make_setup() {
 f_sshd_setup() {
     # Check if SSH client is installed
     case "$PKG_MANAGER" in
-        "apt") apt update && apt install -y openssh-client openssh-server ssh ;;
+        "apt") apt install -y openssh-client openssh-server ssh ;;
         "yum") yum install -y openssh-clients openssh-server ssh ;;
         "dnf") dnf install -y openssh-clients openssh-server ssh;;
         "pacman") pacman -Sy --noconfirm openssh ;;
@@ -865,38 +829,51 @@ f_diceware_setup(){
     esac
 }
 
-f_cron_setup() {
-    # Check if cron is installed
-    if ! command -v crond &> /dev/null && ! command -v cron &> /dev/null; then
-        echo "Cron is not installed. Installing..."
-        case "$PKG_MANAGER" in
-            "apt") apt update && apt install -y cron ;;
-            "yum") yum install -y cronie ;;
-            "dnf") dnf install -y cronie ;;
-            "pacman") pacman -Sy --noconfirm cronie ;;
-            "pkg") pkg install -y cron ;;
-            "pkg_add") pkg_add cron ;;
-            *) echo "  --> Package manager not recognized. Cannot install cron."; return 1 ;;
-        esac
-    else
-        echo "  --> Cron is already installed."
-    fi
+f_build_systemd_services(){
+    cat <<EOF > "/etc/systemd/system/ironjump.service"
+[Unit]
+Description=IronJump Autossh Reverse Tunnel
+After=network-online.target
+Wants=network-online.target
 
-    # Enable cron at boot and start/restart the service
-    echo "  --> Enabling and starting cron..."
-    case "$PKG_MANAGER" in
-        "apt"|"dnf"|"yum"|"pacman")
-            systemctl enable crond 2>/dev/null || systemctl enable cron
-            systemctl restart crond 2>/dev/null || systemctl restart cron
-            ;;
-        "pkg") service cron enable && service cron start ;;
-        "pkg_add") rcctl enable cron && rcctl start cron ;;
-        *) echo "  --> Service management not recognized."; return 1 ;;
-    esac
+[Service]
+Type=simple
+ExecStart=/bin/ironjump-connect.sh
+Restart=always
+RestartSec=15
+User=root
+Environment=AUTOSSH_GATETIME=0
+Environment=AUTOSSH_LOGFILE=/var/log/ironjump-autossh.log
 
-    echo "  --> Cron setup complete!"
-    log_action "Cron setup complete."
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    cat <<EOF > "/etc/systemd/system/ironjump-sync.service"
+[Unit]
+Description=IronJump Sync Script
+
+[Service]
+Type=oneshot
+ExecStart=/bin/ironjump-sync.sh
+User=root
+EOF
+
+    cat <<EOF > "/etc/systemd/system/ironjump-sync.timer"
+[Unit]
+Description=Run IronJump Sync Script Every 5 Minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=30s
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
 }
+
 
 view_configuration() {
     local continue
@@ -1497,7 +1474,24 @@ dev_mgmt_set_expire() {
     fi
 }
 
-#ep_mgmt_menu
+f_check_internet_connectivity() {
+    local choice
+
+    echo -n "Checking Internet Connectivity... "
+    if ping -c 1 -W 4 1.1.1.1 > /dev/null 2>&1; then
+        echo "Success!" ; sleep 1
+    else
+        echo -e "Denied\n"
+        read -p "Internet connectivity not detected. Continue with install (y/n): " choice
+        case $choice in
+            y|Y|yes|Yes|YES) echo "Proceeding with setup." ; sleep 1 ;;
+            n|n|no|No|NO) echo "Setup halted. Exiting..." ; sleep 1 ; main_menu ;;
+            *) invalid_choice ; main_menu ;;
+        esac
+    fi
+}
+
+#from ep_mgmt_menu
 ep_connect() {
     local roletype
     local ironjump_srv_ip
@@ -1514,6 +1508,8 @@ ep_connect() {
     fi
 
     #Begin endpoint setup
+    clear
+    f_check_internet_connectivity
     clear
     if [[ ! -f /opt/IronJump/autossh/configure ]]; then read -p "  --> AutoSSH files are not in folder. Cannot deploy endpoint. See README file." continue; root_server_mgmt_menu ;fi
     clear
@@ -1537,8 +1533,6 @@ ep_connect() {
     log_action "Installed SSH server and client."
     f_make_setup
     log_action "Installed make utility."
-    f_cron_setup
-    log_action "Installed cron daemon."
 
     clear
     echo "IronJump SSH Management : Endpoint Registration Wizard"
@@ -1593,7 +1587,9 @@ ep_connect() {
     if [[ -f /bin/ironjump-connect.sh ]]; then rm -f /bin/ironjump-connect.sh; fi
     cat <<EOF > /bin/ironjump-connect.sh
 #!/bin/bash
-autossh -M 0 -f -o "StrictHostKeyChecking no" -N -i /root/.ssh/ironjump_key -R $(cat /etc/hostname |cut -d '-' -f 2):localhost:22 $(cat /etc/hostname)@$IRONJUMP_SERVER
+###(Modified AutoSSH Command: Removed -f from command for systemd.services to run as foreground process.)
+###(Independent execution will fail during troubleshooting unless you put back the -f after -M 0)
+autossh -M 0 -o "StrictHostKeyChecking no" -N -i /root/.ssh/ironjump_key -R $(cat /etc/hostname |cut -d '-' -f 2):localhost:22 $(cat /etc/hostname)@$IRONJUMP_SERVER
 EOF
     if [[ -f /bin/ironjump-sync.sh ]]; then rm -f /bin/ironjump-sync.sh; fi
     cat <<EOF > /bin/ironjump-sync.sh
@@ -1711,10 +1707,13 @@ EOF
     chmod 0700 /bin/ironjump-*.sh
     chown root:root /bin/ironjump-*.sh
     sleep 3; echo "  --> Requesting Access Control List" ; /bin/ironjump-sync.sh
-    (crontab -l 2>/dev/null; echo "@reboot sleep 90 && pgrep autossh > /dev/null || /bin/ironjump-connect.sh") | crontab -
-    (crontab -l 2>/dev/null; echo "*/10 * * * * pgrep autossh > /dev/null || /bin/ironjump-connect.sh") | crontab -
-    (crontab -l 2>/dev/null; echo "@reboot /bin/ironjump-sync.sh") | crontab -
-    (crontab -l 2>/dev/null; echo "*/5 * * * * /bin/ironjump-sync.sh") | crontab -
+
+    #Build Systemd Services for Autostart
+    f_build_systemd_services
+    sleep 1; systemctl daemon-reexec
+    sleep 1; systemctl daemon-reload
+    sleep 1; systemctl enable ironjump
+    sleep 1; systemctl enable --now ironjump-sync.timer
 
     #Set Endpoint Role
     if [[ -f $IRONJUMP_ROLE_FILE ]]; then roletype=$(cat $IRONJUMP_ROLE_FILE |awk '{print $NF}'); else roletype="UNASSIGNED"; fi
