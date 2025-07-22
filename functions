@@ -1826,6 +1826,7 @@ EOF
     sleep 1; systemctl daemon-reload
     sleep 1; systemctl enable ironjump
     sleep 1; systemctl enable --now ironjump-sync.timer
+    sleep 1; systemctl enable ssh ; systemctl start ; systemctl status ssh
 
     #Set Endpoint Role
     if [[ -f $IRONJUMP_ROLE_FILE ]]; then roletype=$(cat $IRONJUMP_ROLE_FILE |awk '{print $NF}'); else roletype="UNASSIGNED"; fi
