@@ -514,9 +514,43 @@ f_ssh_hard_s12() {
     systemctl restart sshd.service
 }
 
+#Normalize package names per platform
+normalize_packages() {
+    local pkg="$1"
+    case "$pkg" in
+        "openssh-client")
+            case "$PKG_MANAGER" in
+                dnf|yum|rpm) echo "openssh-clients" ;;
+                pacman) echo "openssh" ;;
+                *) echo "$pkg" ;;
+            esac ;;
+        "openssh-server")
+            case "$PKG_MANAGER" in
+                pacman) echo "openssh" ;;
+                *) echo "$pkg" ;;
+            esac ;;
+        "ssh")
+            case "$PKG_MANAGER" in
+                pacman|dnf|yum|rpm) echo "openssh" ;;
+                *) echo "$pkg" ;;
+            esac ;;
+        "diceware")
+            case "$PKG_MANAGER" in
+                pacman) echo "python-diceware" ;;  # Correct for Arch-based systems
+                *) echo "$pkg" ;;
+            esac ;;
+        *)
+            echo "$pkg"
+            ;;
+    esac
+}
+
 ## Deploy IronJump Root Server
 f_setup_ironjump() {
     local roletype
+    local halt_deployment
+    local REQUIRED_PACKAGES
+    local all_installed
 
     #Establish logging for IronJump Server
     touch /var/log/ironjump.log
@@ -524,20 +558,51 @@ f_setup_ironjump() {
     chmod 0600 /var/log/ironjump.log
 
     #Check for internet connectivity
-    clear
+    log_action "Begin IronJump server deployment and setup."
     f_check_internet_connectivity
 
-    clear
-    log_action "Begin IronJump server deployment and setup."
+    #Install required packages
+    REQUIRED_PACKAGES=("gcc" "make" "lsof" "ssh" "openssh-client" "openssh-server" "diceware")
+    all_installed=true
 
-    f_sshd_setup
-    log_action "Installed SSH server and client."
+    for pkg in "${REQUIRED_PACKAGES[@]}"; do
+        norm_pkg=$(normalize_packages "$pkg")
 
-    f_diceware_setup
-    log_action "Installed Diceware utility."
+        case "$PKG_MANAGER" in
+            apt)
+                dpkg-query -W -f='${Status}' "$norm_pkg" 2>/dev/null | grep -q "install ok installed" || all_installed=false
+                ;;
+            dnf|yum)
+                rpm -q "$norm_pkg" >/dev/null 2>&1 || all_installed=false
+                ;;
+            pacman)
+                pacman -Q "$norm_pkg" >/dev/null 2>&1 || all_installed=false
+                ;;
+            pkg)
+                pkg info "$norm_pkg" >/dev/null 2>&1 || all_installed=false
+                ;;
+            pkg_add)
+                pkg_info "$norm_pkg" >/dev/null 2>&1 || all_installed=false
+                ;;
+        esac
+    done
 
-    f_lsof_setup
-    log_action "Installed lsof utility."
+    if [[ "$check_internet" == "0" ]] && [[ "$all_installed" == "false" ]]; then
+        echo -e "Packages Required: ${REQUIRED_PACKAGES[@]}"
+        read -p "Halting deployment due to missing packages. Press [ENTER] to return to Main Menu." halt_deployment
+        main_menu
+    fi
+
+    if [[ "$check_internet" == "1" ]]; then
+        f_sshd_setup
+        log_action "Installed SSH server and client."
+        f_diceware_setup
+        log_action "Installed Diceware utility."
+        f_lsof_setup
+        log_action "Installed lsof utility."
+        f_make_setup
+        log_action "Installed make utility."
+    fi
 
     harden_ssh_service
     log_action "Hardened SSH services."
@@ -1488,9 +1553,9 @@ f_check_internet_connectivity() {
 
     echo -n "Checking Internet Connectivity... "
     if ping -c 1 -W 4 1.1.1.1 > /dev/null 2>&1; then
-        echo "Success!" ; sleep 1
+        echo "Success!" ; check_internet="1" ; sleep 1
     else
-        echo -e "Denied\n"
+        echo -e "Denied\n" ; check_internet="0" ; sleep 1
         read -p "Internet connectivity not detected. Continue with install (y/n): " choice
         case $choice in
             y|Y|yes|Yes|YES) echo "Proceeding with setup." ; sleep 1 ;;
@@ -1507,6 +1572,10 @@ ep_connect() {
     local has_token
     local continue
     local log_intro
+    local all_installed
+    local norm_pkg
+    local halt_deployment
+    local REQUIRED_PACKAGES
 
     #Create log file on endpoint
     if [[ ! -f /var/log/ironjump.log ]]; then
@@ -1519,7 +1588,7 @@ ep_connect() {
     clear
     f_check_internet_connectivity
     clear
-    if [[ ! -f /opt/IronJump/autossh/configure ]]; then read -p "  --> AutoSSH files are not in folder. Cannot deploy endpoint. See README file." continue; root_server_mgmt_menu ;fi
+    if [[ ! -f /opt/IronJump/autossh/configure ]]; then read -p "  --> AutoSSH files are not in folder. Cannot deploy endpoint. See README file." continue; main_menu ;fi
     clear
     echo "IronJump SSH Management : Endpoint Registration Wizard"
     nav_top_bar
@@ -1537,12 +1606,45 @@ ep_connect() {
     esac
 
     #Install necessary packages for IronJump endpoint.
-    f_sshd_setup
-    log_action "Installed SSH server and client."
-    f_make_setup
-    log_action "Installed make utility."
-    f_lsof_setup
-    log_action "Installed lsof utility."
+    REQUIRED_PACKAGES=("gcc" "make" "lsof" "ssh" "openssh-client" "openssh-server")
+    all_installed=true
+
+    for pkg in "${REQUIRED_PACKAGES[@]}"; do
+        norm_pkg=$(normalize_packages "$pkg")
+
+        case "$PKG_MANAGER" in
+            apt)
+                dpkg-query -W -f='${Status}' "$norm_pkg" 2>/dev/null | grep -q "install ok installed" || all_installed=false
+                ;;
+            dnf|yum)
+                rpm -q "$norm_pkg" >/dev/null 2>&1 || all_installed=false
+                ;;
+            pacman)
+                pacman -Q "$norm_pkg" >/dev/null 2>&1 || all_installed=false
+                ;;
+            pkg)
+                pkg info "$norm_pkg" >/dev/null 2>&1 || all_installed=false
+                ;;
+            pkg_add)
+                pkg_info "$norm_pkg" >/dev/null 2>&1 || all_installed=false
+                ;;
+        esac
+    done
+
+    if [[ "$check_internet" == "0" ]] && [[ "$all_installed" == "false" ]]; then
+        echo "Packages Required: ${REQUIRED_PACKAGES[@]}"
+        read -p "Halting deployment due to missing packages. Press [ENTER] to return to Main Menu." halt_deployment
+        main_menu
+    fi
+
+    if [[ "$check_internet" == "1" ]]; then
+        f_sshd_setup
+        log_action "Installed SSH server and client."
+        f_make_setup
+        log_action "Installed make utility."
+        f_lsof_setup
+        log_action "Installed lsof utility."
+    fi
 
     clear
     echo "IronJump SSH Management : Endpoint Registration Wizard"
