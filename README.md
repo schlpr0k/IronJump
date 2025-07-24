@@ -1,6 +1,6 @@
-# IronJump SSH Bastion Administration Guide
+<img width="288" height="288" alt="image" src="https://github.com/user-attachments/assets/ffc8c468-1b41-428f-84df-31aabde190bc" />
 
-<img src="https://github.com/user-attachments/assets/44469293-e15e-481a-940f-5f70e1cbc061" alt="IronJump logo" length="300" width="300"/>
+# IronJump SSH Bastion Administration Guide
 
 IronJump is a lightweight, menu-driven SSH bastion system designed for administrators, consultants, penetration testers, red teams, blue teams, and incident responders. It simplifies the deployment of physical or virtual bastion hosts, automates the setup and management of SSH tunnels, and provides a structured access control management system.
 
@@ -14,6 +14,9 @@ IronJump is a lightweight, menu-driven SSH bastion system designed for administr
   * [Setting up IronJump Endpoints](#setting-up-ironjump-endpoints)
     * [Endpoint Device Account Creation](#endpoint-device-account-creation)
     * [Initiate Endpoint Registration](#initiate-endpoint-registration)
+* [User Account Management](#user-account-management)
+  * [Adding a New User](#adding-a-new-user)
+* [Access Control Management](#access-control-management)
 
 ## Installation
 
@@ -33,7 +36,7 @@ IronJump is a self-contained package for deploying the IronJump Server (aka the 
 1. Download IronJump by cloning this repository and its submodules to `/opt/IronJump`.
 
    ```bash
-   git clone --recurse-submodules https://github.com/IronJump/IronJump.git /opt/IronJump
+   git clone --recurse-submodules https://github.com/schlpr0k/IronJump.git /opt/IronJump
    ```
 
 ### Install IronJump
@@ -44,7 +47,7 @@ IronJump is a self-contained package for deploying the IronJump Server (aka the 
    sudo /opt/IronJump/IronJump.sh
    ```
 
-> [!IMPORTANT]
+> [!NOTE]
 > This will add `ironjump` to the `$PATH`, but IronJump will not be ready for use until you set-up the system as a Bastion server or Endpoint (see next sections).
 
 ## Set-up IronJump
@@ -76,7 +79,7 @@ The IronJump menu has a few simple options:
 
 ### Setting up IronJump Endpoints
 
-Endpoints are labeled as `ingots` within IronJump. You may see references in this documentation to Endpoints Devices as `hosts`, `ingots`, or `endpoint accounts`.
+Endpoints are labeled as `ingots` within IronJump. You may see references in this documentation to Endpoints Devices as `hosts`, `ingots`, `jumpbox` or `endpoint accounts`.
 
 > [!NOTE]
 > For automated management of access controls and SSH connections, the hostname of the endpoint must be identical to an account registered on the IronJump server, which is why when set-up is run on an endpoint, the hostname will be modified.
@@ -91,7 +94,7 @@ Endpoints are labeled as `ingots` within IronJump. You may see references in thi
 1. On the Bastion server, start IronJump, if it is not already running:
 
    ```bash
-   sudo ironjump
+   sudo /opt/IronJump/IronJump.sh || sudo ironjump
    ```
 
 2. From the Main Menu, select `Root Server Management` > `Endpoint Device Account Management` > `Create New Endpoint Device Account`.
@@ -110,13 +113,10 @@ Endpoints are labeled as `ingots` within IronJump. You may see references in thi
 
 #### Initiate Endpoint Registration
 
-> [!NOTE]
-> Required dependencies (OpenSSH Server, OpenSSH Client, Cron) are automatically installed during this set-up and the hostname will be modified during this process.
-
 1. On the new endpoint, start IronJump, if it is not already running:
 
    ```bash
-   sudo ironjump
+   sudo /opt/IronJump/IronJump.sh || sudo ironjump
    ```
 
 2. From the Main Menu, select `Endpoint Device Management` > `Connect to IronJump Server`.
@@ -126,14 +126,18 @@ Endpoints are labeled as `ingots` within IronJump. You may see references in thi
    * Endpoint account name
    * One-Time Password
 
-4. Automatic Setup will be performed, which will:
+4. Follow the prompts and enter the one-time password when prompted.
+ 
+5. Automatic Setup will be performed, which will:
    * Install necessary dependencies: OpenSSH Server & Client, Make, GCC, and Cron
    * Install the included AutoSSH
    * Change the hostname to `ingot-#####` where `#####` is the assigned port number (50000–59999) for the bastion's reverse SSH tunnels
    * Automate Access Control Synchronization
    * Configure a cron job to run every 5 minutes to pull the latest Access Control rules and SSH keys from the server
 
-5. Press ENTER to reboot the system to establish a connection to the IronJump Server.
+7. Press ENTER to reboot the system to establish a connection to the IronJump Server.
+
+## User Account Setup
 
 <!-- markdownlint-configure-file
 {
