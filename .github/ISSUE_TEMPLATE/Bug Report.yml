@@ -1,0 +1,49 @@
+name: 🐞 Report a bug
+description: Have you found a bug or issue? Create a bug report for this library
+labels: ["bug"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Please do not report security vulnerabilities here**. Please send an email to **andrew.bindner@printon.me** to start a dialog and disclose security issues.
+
+  - type: textarea
+    id: plaform
+    attribues:
+      label: Platform
+      description: What is your operating system and version?
+      placeholder: |
+        Ubuntu 24.04.2 LTS
+        Kali 2025.2
+        AWs Linux
+    validations: 
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Provide a clear and concise description of the issue, including what you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Detail the steps taken to reproduce this error, and whether this issue can be reproduced consistently or if it is intermittent.
+      placeholder: |
+        1. Step 1...
+        2. Step 2...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Other libraries that might be involved, or any other relevant information you think would be useful.
+    validations:
+      required: false
