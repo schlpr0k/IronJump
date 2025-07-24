@@ -767,7 +767,9 @@ ironjump_archive() {
     local folders=(
         "/root"
         "/home"
-        "/var/log"
+        "/opt/IronJump"
+        "/var/log/ironjump.log"
+        "/var/log/ironjump-autossh.log"
     )
 
     clear
