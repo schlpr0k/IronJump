@@ -10,7 +10,7 @@ body:
 
   - type: textarea
     id: plaform
-    attribues:
+    attributes:
       label: Platform
       description: What is your operating system and version?
       placeholder: |
