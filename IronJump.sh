@@ -37,11 +37,12 @@ else
     cd $SCRIPT_DIR
 fi
 
-# Check for functions file
-if [[ -f ./functions ]]; then
-    source ./functions
+# Check for functions.sh file
+if [[ -f ./functions.sh ]]; then
+    # shellcheck disable=SC1091
+    source ./functions.sh
 else
-    echo "The functions file must be in the working directory to continue."
+    echo "The functions.sh file must be in the working directory to continue."
     exit 1
 fi
 
