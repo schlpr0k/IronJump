@@ -34,7 +34,7 @@ if [[ ! -f /opt/IronJump/IronJump.sh ]]; then
 else
     OLDPWD=$(pwd)
     SCRIPT_DIR="/opt/IronJump"
-    cd $SCRIPT_DIR
+    cd $SCRIPT_DIR || exit
 fi
 
 # Check for functions.sh file
@@ -51,17 +51,17 @@ if [[ ! -f /opt/IronJump/autossh/configure ]]; then
     clear
     echo -e "[WARNING]\n---------"
     echo -e "IronJump may not have been downloaded correctly."
-    echo -e "The AutoSSH folder is empty, which will is required"
+    echo -e "The AutoSSH folder is empty, which is required"
     echo -e "for proper operation. It is likely that IronJump"
     echo -e "was incorrectly installed from Git. Please use the"
     echo -e "following commands when downloading from Git:"
     echo -e "\n\n  --> cd /opt/"
-    echo -e "  --> git clone --recurse-submodules https://github.com/IronJump/IronJump.git"
+    echo -e "  --> git clone --recurse-submodules https://github.com/schlpr0k/IronJump.git"
     echo -e "  --> cd IronJump"
     echo -e "  --> chmod +x IronJump.sh"
     echo -e "\n\nIF you have installed AutoSSH already, this"
     echo -e "message can be ignored.\n"
-    read -p "Press [ENTER] to continue." continue
+    read -r -p "Press [ENTER] to continue." continue
 fi
 
 # Create Symbolic Link for IronJump
@@ -69,7 +69,7 @@ clear
 if [[ ! -e /bin/ironjump ]]; then
     ln -s /opt/IronJump/IronJump.sh /bin/ironjump
     echo -e "\nA shortcut has been created for IronJump. You can now run \"sudo ironjump\" from anywhere on the command line."
-    read -p "Press [ENTER] to continue to IronJump." continue
+    read -r -p "Press [ENTER] to continue to IronJump." continue
 fi
 
 
