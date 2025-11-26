@@ -17,6 +17,10 @@ Welcome to **IronJump**, a hardened SSH bastion and endpoint management system b
   - [Who Should Use This?](#who-should-use-this)
   - [Example Use Cases](#example-use-cases)
 - [Getting Started](#getting-started)
+  - [System Requirements](#system-requirements)
+  - [Installation](#installation)
+    - [Server](#server)
+    - [Endpoint](#endpoint)
 - [Root Server Management](#root-server-management)
   - [Configuration & Deployment Management](#configuration--deployment-management)
   - [User Account Management](#user-account-management)
@@ -58,23 +62,106 @@ IronJump reduces administrative complexity while increasing visibility, auditabi
 
 ## Getting Started
 
+### System Requirements
+
+IronJump is lightweight and can operate with minimum OS system requirements. The
+following represents the suggested system requirements for running on Ubuntu.
+
+* CPUs: 1
+* Memory: 4GB
+* Disk space: 10GB (If headless)
+
+---
 ### Installation
 
+> [!NOTE]
+> - _This is the common set-up which needs to be done on Servers and Endpoints._
+> - _The script **must be run as root** and placed inside `/opt/IronJump`._
+
+1. Add IronJump to the system:
 ```bash
 sudo git clone --recurse-submodules https://github.com/schlpr0k/IronJump.git /opt/IronJump
 cd /opt/IronJump
 sudo chmod +x IronJump.sh
-sudo ./IronJump.sh
 ```
 
-Additionally, you can also run IronJump from anywhere with after running /opt/IronJump/IronJump.sh for the first time:
+2. Launch IronJump for the first time to create an `ironjump` symlink on the PATH:
+```bash
+sudo /opt/IronJump/IronJump.sh
+```
 
+---
+#### Server
+
+> [!NOTE]
+> _See [Root Server Management](#root-server-management) for full details; the
+following is just a QuickStart!_
+
+1. Launch `ironjump` on the system which will act as the server:
 ```bash
 sudo ironjump
 ```
 
+2. Navigate thru the following Menu Options:
+   - `1. Root Server Management`
+   - `1. Configuration & Deployment Management`
+   - `3. Deploy an IronJump Root Server` --> _This will begin deployment immediately!_
+
+3. There will be several prompts during deployment; answer them appropriately.
+
+4. When Server setup is complete, IronJump will return to the Main Menu.
+   Navigate thru the following Menu Options to prepare the Server to accept an
+   Endpoint connection:
+   - `1. Root Server Management`
+   - `3. Endpoint Device Account Management`
+   - `2. Create New Endpoint Device Account`
+
+5. When prompted, enter a description of the new endpoint.
+
+6. Save the Endpoint account name and One-time Password!! _**They will not be
+   shown again!**_
+
+7. Save the Server IP Address at the top of the menu for use in connecting the Endpoint.
+
+8. Continue to the [Endpoint](#endpoint) section to register an Endpoint.
+
+---
+#### Endpoint
+
 > [!NOTE]
-> The script **must be run as root** and placed inside `/opt/IronJump`.
+> _See [Endpoint Device Management](#endpoint-device-management) for full details;
+the following is just a QuickStart!_
+
+1. Launch `ironjump` on the system which will act as an endpoint:
+```bash
+sudo ironjump
+```
+
+2. Navigate thru the following Menu Options:
+   - `2. Endpoint Device Management`
+   - `1. Connect to IronJump Server`
+
+3. When prompted, input:
+   - Server IP Address
+   - Endpoint account name
+   - yes (_When asked IF you have the Endpoint password, this is NOT the place to input the password_)
+
+4. Setup will continue and then display a confirmation page. Press ENTER to
+   confirm the server and username are correct.
+
+5. When prompted, input the one time password.
+
+6. When Endpoint setup is complete, press ENTER to confirm reboot.
+
+7. When the Endpoint host has rebooted, reconnect to the host and execute `sudo ironjump`.
+   The `Role` should now be `ENDPOINT` and the `Hostname` should now be `ingot-XXXXX`.
+
+8. Press `S` to view SSH Connections. In the `RAW VIEW` there should be an
+   `ssh` connection established to the Server IP Address.
+
+9. ON THE SERVER, within `ironjump`, press `S` to view SSH Connections. The top
+   chart should contain an `ingot-XXXXX` user matching the Endpoint Hostname
+   which was just connected.
 
 ---
 

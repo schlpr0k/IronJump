@@ -1,0 +1,75 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# All Vagrant configuration is done below. The "2" in Vagrant.configure
+# configures the configuration version (we support older styles for
+# backwards compatibility). Please don't change it unless you know what
+# you're doing.
+Vagrant.configure("2") do |config|
+  # The most common configuration options are documented and commented below.
+  # For a complete reference, please see the online documentation at
+  # https://docs.vagrantup.com.
+
+  # VARIABLES
+  vm_prefix = "ironjump-ubu2404"
+  server_name = "#{vm_prefix}-server"
+  endpoint_prefix = "#{vm_prefix}-endpoint-"
+  common_provision_script = "../common_provisioning.sh"
+  num_endpoints = ENV['IRONJUMP_NUM_ENDPOINTS'] ? ENV['IRONJUMP_NUM_ENDPOINTS'].to_i : 1
+
+  # COMMON
+  # Create a private network, which allows host-only access to the machines
+  config.vm.network "private_network", type: "dhcp"
+
+  # Use Ubuntu box supported by Chef (Ubuntu officially withdrew from Vagrant).
+  # NOTE: This image has a 64GB THINLY provisioned disk which only uses approx
+  # 2GB. VirtualBox does not support shrinking disks, even though Vagrant does.
+  config.vm.box = "bento/ubuntu-24.04"
+
+  # SERVER SPECIFIC
+  config.vm.define server_name, primary: true do |ironjump_server|
+    ironjump_server.vm.hostname = server_name
+
+    # Provider-specific configuration so you can fine-tune various
+    # backing providers for Vagrant. These expose provider-specific options.
+    ironjump_server.vm.provider "virtualbox" do |vb|
+      # Name in VirtualBox
+      vb.name = server_name
+      vb.cpus = 1
+      # The amount of memory in MB
+      vb.memory = "4096"
+      # Disable Remote Display server
+      vb.customize ["modifyvm", :id, "--vrde=off"]
+    end
+  end
+
+  # ENDPOINT SPECIFIC
+  (1..num_endpoints).each do |n|
+    endpoint_name = "#{endpoint_prefix}#{n}"
+    config.vm.define endpoint_name do |ironjump_endpoint|
+      # Hostname. Note: This will be overwritten during IronJump Endpoint set-up
+      ironjump_endpoint.vm.hostname = endpoint_name
+
+      # Provider-specific configuration so you can fine-tune various
+      # backing providers for Vagrant. These expose provider-specific options.
+      ironjump_endpoint.vm.provider "virtualbox" do |vb|
+        # Name in VirtualBox
+        vb.name = endpoint_name
+        vb.cpus = 1
+        # The amount of memory in MB
+        vb.memory = "1024"
+        # Disable Remote Display server
+        vb.customize ["modifyvm", :id, "--vrde=off"]
+      end
+    end
+  end
+
+  # ADDITIONAL COMMON
+  # NOTE: Cannot use synced_folder to /opt/IronJump due to ironjump.role file
+  # needed for both server and endpoint which will stomp on each other for testing
+  # Necessary files in /vagrant will be copied to /opt/IronJump in common_provision_script
+  config.vm.synced_folder "../../..", "/vagrant"
+
+  # Enable common provisioning with a shell script.
+  config.vm.provision "Run common provisioning", type: "shell", privileged: true, path: common_provision_script
+end
