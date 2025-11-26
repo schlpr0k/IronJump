@@ -5,7 +5,7 @@
 Welcome to **IronJump**, a hardened SSH bastion and endpoint management system built for IT, cybersecurity, and OT environments. This guide provides a detailed walkthrough for system administrators managing IronJump in real-world infrastructure deployments.
 
 > [!TIP] 
-> Videos Are Coming!
+> [Watch the BlackHat Arsenal Presentation!](https://drive.google.com/file/d/1U1EpI-Uat7-UnHyR0p_eApjEExXhrlDv/view?usp=sharing)
 
 ---
 
