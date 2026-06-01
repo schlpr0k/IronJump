@@ -1,0 +1,27 @@
+name: Linting
+description: Runs shellcheck on demand and on PRs to main
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**/*.sh'
+  workflow_dispatch:
+
+jobs:
+  pre-commit-script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check-out repository under $GITHUB_WORKSPACE
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Run pre-commit.sh (shellcheck)
+        run: $GITHUB_WORKSPACE/.github/pre-commit.sh
